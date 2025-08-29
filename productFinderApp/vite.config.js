@@ -12,6 +12,11 @@ export default defineConfig(({ command, mode }) => {
     define: {
       __APP_ENV__: JSON.stringify(env.APP_ENV),
     },
+    server: {
+      host: '0.0.0.0',
+      port: 5000,
+      strictPort: true,
+    },
     test: {
       globals: true,
       environment: 'jsdom',
