@@ -39,7 +39,7 @@ const ImageAnalysis = () => {
     {
       <>
           {loading && <p>Loading...</p>}
-          {error && <p>Error: {error.message}</p>}
+        {error && <p style={{ color: "red" }}>Error: {error}</p>}
           {productData && Array.isArray(productData) && productData.length > 0 && (
             <div>
               <ProductCarousel products={productData} />

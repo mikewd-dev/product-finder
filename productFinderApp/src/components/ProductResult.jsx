@@ -73,7 +73,7 @@ const ProductResult = ({inputImageFile = null}) => {
       // Pass the updated imageFile to the handleImageUploadWrapper function
       handleImageUploadWrapper(resizedImage);
     } catch (error) {
-      setError(error);
+      setError(formatError(error));
       console.error("Error processing image:", error);
     }
   };
