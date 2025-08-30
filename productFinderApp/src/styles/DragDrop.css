@@ -31,4 +31,12 @@
     color: var(--color-main-light);
     border: 10px solid var(--color-accent-light);
   }
-  
+
+@media screen and (max-width: 600px){
+  .drag-drop-container{
+    display: flex;
+    flex-direction: row;
+    width:100vw;
+  }
+
+}

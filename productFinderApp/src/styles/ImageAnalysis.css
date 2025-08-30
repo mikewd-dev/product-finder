@@ -24,6 +24,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+  align-content: center;
     font-family: "Lexend Zetta", sans-serif;
     font-weight: 900;
     text-transform: uppercase;
@@ -33,8 +34,12 @@
   
   .button-container {
     display: flex;
-    flex-direction: row; /* Updated to make buttons align horizontally */
+    flex-direction: row; 
     align-items: center;
+    justify-content: center;
+    justify-items: center;
+    align-content: center;
+    
     gap: 10px; /* Adjust the gap between buttons as needed */
     margin-bottom: 20px;
   }
@@ -62,6 +67,8 @@
     font-family: "Lexend Zetta", sans-serif;
     font-weight: 900;
     text-transform: uppercase;
+    text-align: center;;
+    
   }
   
   .upload-image-button:hover,
@@ -193,4 +200,41 @@ ul a:hover {
   border-radius: 20px;
   padding: 20px;
  
+}
+
+@media screen and (max-width: 600px){
+  .center-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  align-content: center;
+    font-family: "Lexend Zetta", sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    margin-top: 10px;
+    width: 100vw;
+    
+  }
+ 
+  .button-container {
+    display: flex;
+    flex-direction: column; 
+    width: 100vw;
+    gap: 10px; /* Adjust the gap between buttons as needed */
+  }
+  /* .file-input{
+    width: 100%;
+  } */
+  .upload-image-button{
+    width: 100vw;
+  }
+  .submit-upload{
+    width: 100vw;
+  }
+  .visually-similar {
+    flex-direction: column;
+    width: 100vw;
+  }
 }

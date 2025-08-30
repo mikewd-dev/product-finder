@@ -10,7 +10,6 @@ const ImageAnalysis = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [analysisResults, setAnalysisResults] = useState(null);
 
-  //Sorry abigail for cluttering your code with these states sadly I cannot get rid of them due to how ProductResults was set up and my lack of brain power
   const [productName, setProductName] = useState("");
   const [productData, setProductData] = useState(null);
   const [loading, setLoading] = useState(false);
