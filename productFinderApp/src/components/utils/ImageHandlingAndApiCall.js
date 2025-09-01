@@ -2,6 +2,7 @@ import axios from "axios";
 import heic2any from "heic2any";
 import { imageFileResizer } from "react-image-file-resizer";
 
+// Safely modify and normalize product data
 export const modifyData = (products = []) => {
   if (!Array.isArray(products)) return [];
 
@@ -24,20 +25,35 @@ export const modifyData = (products = []) => {
   });
 };
 
+// Extract item name from Vision API response, safely using multiple fields
 export const extractItemNameFromResponse = (response, setProductName) => {
-  try {
-    const text =
-      response?.data?.responses?.[0]?.fullTextAnnotation?.text ?? "Unknown Item";
-    setProductName(text);
-    return text;
-  } catch (err) {
-    console.error("Error extracting text:", err);
-    return "Unknown Item";
+  let extractedText = response?.data?.responses?.[0]?.fullTextAnnotation?.text;
+
+  // fallback to textAnnotations if fullTextAnnotation is empty
+  if (!extractedText) {
+    const textAnnotations = response?.data?.responses?.[0]?.textAnnotations;
+    if (textAnnotations?.length > 0) {
+      extractedText = textAnnotations.map((a) => a.description).join(" ");
+    }
   }
+
+  // fallback to logos if no text
+  if (!extractedText) {
+    const logos = response?.data?.responses?.[0]?.logoAnnotations;
+    if (logos?.length > 0) {
+      extractedText = logos[0].description;
+    }
+  }
+
+  // final fallback
+  if (!extractedText) extractedText = "Unknown Item";
+
+  setProductName(extractedText);
+  return extractedText;
 };
 
-
-const fetchData = async (itemName, setLoading, setProductData, setError) => {
+// Fetch data from RapidAPI safely
+const fetchData = async (itemName, setLoading, setError) => {
   const options = {
     method: "GET",
     url: "https://real-time-product-search.p.rapidapi.com/search",
@@ -61,7 +77,7 @@ const fetchData = async (itemName, setLoading, setProductData, setError) => {
   }
 };
 
-
+// Main image upload handler
 export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
     let convertedImage = imageFile;
@@ -108,9 +124,7 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
     });
 
     const itemName = extractItemNameFromResponse(visionApiResponse, setProductName);
-    setProductName(itemName);
-
-    const apiResponse = await fetchData(itemName, setLoading, setProductName, setError);
+    const apiResponse = await fetchData(itemName, setLoading, setError);
 
     return modifyData(apiResponse.data);
   } catch (err) {
