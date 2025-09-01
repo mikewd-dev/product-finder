@@ -233,8 +233,23 @@ ul a:hover {
   .submit-upload{
     width: 100vw;
   }
-  .visually-similar {
+
+  .matching-images {
     flex-direction: column;
     width: 100vw;
+  }
+  .visually-similar{
+    width:100vw;
+    flex-direction: column;
+  }
+  li {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100vw;
+  }
+
+  img{
+    width:100vw;
+    height:auto;
   }
 }
