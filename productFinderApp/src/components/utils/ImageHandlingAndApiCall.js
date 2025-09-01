@@ -3,56 +3,29 @@ import heic2any from "heic2any";
 import { imageFileResizer } from "react-image-file-resizer";
 import { formatError } from "./utils";
 
-// Safely modify and normalize product data
 const modifyData = (products) => {
-<<<<<<< HEAD
   let modifiedData = [];
   products.map((product) => {
     const shippingValue = product.offer.shipping ? product.offer.shipping : 0;
-=======
-  if (!Array.isArray(products)) {
-    console.warn("modifyData expected an array but got:", products);
-    return [];
-  }
-
-  return products.map((product) => {
-    const shippingValue = product.offer?.shipping || 0;
->>>>>>> 0123f85 (made visual changes)
     const imagesValue = Array.isArray(product.product_photos)
       ? product.product_photos
       : [product.product_photos];
 
-<<<<<<< HEAD
     modifiedData.push({
       name: product.product_title,
       description: product.product_description,
       retailer: product.offer.store_name,
       rating: product.offer.store_rating,
       price: product.offer.price.replace(/£/g, ""),
-=======
-    return {
-      name: product.product_title,
-      description: product.product_description,
-      retailer: product.offer?.store_name || "",
-      rating: product.offer?.store_rating || 0,
-      price: product.offer?.price?.replace(/£/g, "") || "",
->>>>>>> 0123f85 (made visual changes)
       shipping: shippingValue,
-      link: product.offer?.offer_page_url || "",
+      link: product.offer.offer_page_url,
       images: imagesValue,
-<<<<<<< HEAD
     });
-=======
-    };
->>>>>>> 0123f85 (made visual changes)
   });
+  return modifiedData;
 };
 
-<<<<<<< HEAD
 // Extract item name from multiple Vision API features
-=======
-// Extract item name from Vision API response
->>>>>>> 0123f85 (made visual changes)
 const extractItemNameFromResponse = (response, setProductName) => {
   const resp = response?.data?.responses?.[0];
   let itemName = "Unknown Item";
@@ -78,26 +51,18 @@ const extractItemNameFromResponse = (response, setProductName) => {
   return itemName;
 };
 
-<<<<<<< HEAD
-=======
-// Handle image upload and fetch product data
->>>>>>> 0123f85 (made visual changes)
 export const handleImageUpload = async (
   imageFile,
   setProductName,
   setError,
   setLoading
 ) => {
-<<<<<<< HEAD
   const fetchData = async (itemName) => {
     if (!itemName || itemName === "Unknown Item") {
       setError("Could not detect a valid item from the image.");
       return null;
     }
 
-=======
-  const fetchData = async (itemName, setLoading, setProductData, setError) => {
->>>>>>> 0123f85 (made visual changes)
     const options = {
       method: "GET",
       url: "https://real-time-product-search.p.rapidapi.com/search",
@@ -117,18 +82,11 @@ export const handleImageUpload = async (
     try {
       setLoading(true);
       const response = await axios.request(options);
-<<<<<<< HEAD
       console.log("RapidAPI response:", response.data);
       return response.data;
     } catch (error) {
       setError(formatError(error));
       console.error("Error fetching data:", error);
-=======
-      return response.data;
-    } catch (error) {
-      setError(error?.response?.data || error.message || "Unknown RapidAPI error");
-      console.error("Error fetching product data:", error);
->>>>>>> 0123f85 (made visual changes)
       return null;
     } finally {
       setLoading(false);
@@ -136,28 +94,15 @@ export const handleImageUpload = async (
   };
 
   try {
-<<<<<<< HEAD
     let convertedImage = imageFile;
     if (!imageFile.type.startsWith("image/svg+xml") &&
         !imageFile.type.startsWith("image/png") &&
         !imageFile.type.startsWith("image/jpeg")) {
-=======
-    let convertedImage;
-
-    if (
-      imageFile.type.startsWith("image/svg+xml") ||
-      imageFile.type.startsWith("image/png") ||
-      imageFile.type.startsWith("image/jpeg")
-    ) {
-      convertedImage = imageFile;
-    } else {
->>>>>>> 0123f85 (made visual changes)
       convertedImage = await heic2any({ blob: imageFile });
     }
 
     const reader = new FileReader();
 
-<<<<<<< HEAD
     const visionApiResponse = await new Promise((resolve, reject) => {
       reader.onload = async () => {
         const imageContent = reader.result.split(",")[1];
@@ -165,14 +110,6 @@ export const handleImageUpload = async (
 
         const apiKey = import.meta.env.VITE_REACT_APP_GOOGLE_VISION_API;
         const visionApiEndpoint = "https://vision.googleapis.com/v1/images:annotate";
-=======
-    // Wrap the Vision API call in a promise
-    const visionApiResponse = await new Promise((resolve, reject) => {
-      reader.onload = async () => {
-        const imageContent = reader.result.split(",")[1];
-        const visionApiEndpoint = "https://vision.googleapis.com/v1/images:annotate";
-        const apiKey = import.meta.env.VITE_REACT_APP_GOOGLE_VISION_API;
->>>>>>> 0123f85 (made visual changes)
 
         try {
           const response = await axios.post(
@@ -192,25 +129,18 @@ export const handleImageUpload = async (
             },
             { headers: { "Content-Type": "application/json" } }
           );
-<<<<<<< HEAD
           console.log("Vision API response received");
-=======
->>>>>>> 0123f85 (made visual changes)
           resolve(response);
         } catch (error) {
           reject(error);
         }
       };
 
-<<<<<<< HEAD
       reader.onerror = reject;
-=======
->>>>>>> 0123f85 (made visual changes)
       reader.readAsDataURL(convertedImage);
     });
 
     const itemName = extractItemNameFromResponse(visionApiResponse, setProductName);
-<<<<<<< HEAD
     console.log("Final itemName used for search:", itemName);
 
     const fetchResponse = await fetchData(itemName);
@@ -221,7 +151,138 @@ export const handleImageUpload = async (
     setError(formatError(error));
     console.error("Error handling image:", error);
     return null;
-=======
+  }
+};
+
+This is the one on codespaces
+
+import axios from "axios";
+import heic2any from "heic2any";
+import { imageFileResizer } from "react-image-file-resizer";
+
+// Safely modify and normalize product data
+const modifyData = (products) => {
+  if (!Array.isArray(products)) {
+    console.warn("modifyData expected an array but got:", products);
+    return [];
+  }
+
+  return products.map((product) => {
+    const shippingValue = product.offer?.shipping || 0;
+    const imagesValue = Array.isArray(product.product_photos)
+      ? product.product_photos
+      : [product.product_photos];
+
+    return {
+      name: product.product_title,
+      description: product.product_description,
+      retailer: product.offer?.store_name || "",
+      rating: product.offer?.store_rating || 0,
+      price: product.offer?.price?.replace(/£/g, "") || "",
+      shipping: shippingValue,
+      link: product.offer?.offer_page_url || "",
+      images: imagesValue,
+    };
+  });
+};
+
+// Extract item name from Vision API response
+const extractItemNameFromResponse = (response, setProductName) => {
+  if (response?.data?.responses?.[0]?.fullTextAnnotation) {
+    const extractedText = response.data.responses[0].fullTextAnnotation.text;
+    setProductName(extractedText);
+    return extractedText;
+  }
+  return "Unknown Item";
+};
+
+// Handle image upload and fetch product data
+export const handleImageUpload = async (
+  imageFile,
+  setProductName,
+  setError,
+  setLoading
+) => {
+  const fetchData = async (itemName, setLoading, setProductData, setError) => {
+    const options = {
+      method: "GET",
+      url: "https://real-time-product-search.p.rapidapi.com/search",
+      params: {
+        q: itemName,
+        country: "gb",
+        language: "en",
+        limit: 29,
+        sort_by: "LOWEST_PRICE",
+      },
+      headers: {
+        "X-RapidAPI-Key": import.meta.env.VITE_REACT_APP_RAPIDAPI_KEY,
+        "X-RapidAPI-Host": import.meta.env.VITE_REACT_APP_RAPIDAPI_HOST,
+      },
+    };
+
+    try {
+      setLoading(true);
+      const response = await axios.request(options);
+      return response.data;
+    } catch (error) {
+      setError(error?.response?.data || error.message || "Unknown RapidAPI error");
+      console.error("Error fetching product data:", error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  try {
+    let convertedImage;
+
+    if (
+      imageFile.type.startsWith("image/svg+xml") ||
+      imageFile.type.startsWith("image/png") ||
+      imageFile.type.startsWith("image/jpeg")
+    ) {
+      convertedImage = imageFile;
+    } else {
+      convertedImage = await heic2any({ blob: imageFile });
+    }
+
+    const reader = new FileReader();
+
+    // Wrap the Vision API call in a promise
+    const visionApiResponse = await new Promise((resolve, reject) => {
+      reader.onload = async () => {
+        const imageContent = reader.result.split(",")[1];
+        const visionApiEndpoint = "https://vision.googleapis.com/v1/images:annotate";
+        const apiKey = import.meta.env.VITE_REACT_APP_GOOGLE_VISION_API;
+
+        try {
+          const response = await axios.post(
+            `${visionApiEndpoint}?key=${apiKey}`,
+            {
+              requests: [
+                {
+                  image: { content: imageContent },
+                  features: [
+                    { type: "PRODUCT_SEARCH", maxResults: 10 },
+                    { type: "LABEL_DETECTION", maxResults: 5 },
+                    { type: "LOGO_DETECTION", maxResults: 5 },
+                    { type: "TEXT_DETECTION", maxResults: 5 },
+                  ],
+                },
+              ],
+            },
+            { headers: { "Content-Type": "application/json" } }
+          );
+          resolve(response);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      reader.readAsDataURL(convertedImage);
+    });
+
+    const itemName = extractItemNameFromResponse(visionApiResponse, setProductName);
     setProductName(itemName);
 
     const fetchResponse = await fetchData(itemName, setLoading, setProductName, setError);
@@ -238,6 +299,5 @@ export const handleImageUpload = async (
     setError(error?.message || "Unknown error during image upload");
     console.error("Error handling image:", error);
     return [];
->>>>>>> 0123f85 (made visual changes)
   }
 };
