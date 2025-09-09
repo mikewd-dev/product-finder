@@ -25,9 +25,7 @@ const modifyData = (products) => {
   });
   return modifiedData;
 };
-// Utility function to handle image upload
 
-// Utility function to extract item name from response
 const extractItemNameFromResponse = (response, setProductName) => {
   if (response?.data?.responses?.[0]?.fullTextAnnotation) {
     const extractedText = response.data.responses[0].fullTextAnnotation.text;
