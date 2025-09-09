@@ -81,8 +81,6 @@ const fetchData = async (itemName, setLoading, setError) => {
 export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
     let convertedImage = imageFile;
-
-    // Convert HEIC images
     if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
       convertedImage = await heic2any({ blob: imageFile });
     }
@@ -94,27 +92,14 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
         try {
           if (!reader.result) return reject("Failed to read image");
           const imageContent = reader.result.split(",")[1];
-          const apiKey = import.meta.env.VITE_REACT_APP_GOOGLE_VISION_API;
 
-          const response = await axios.post(
-            `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-            {
-              requests: [
-                {
-                  image: { content: imageContent },
-                  features: [
-                    { type: "PRODUCT_SEARCH", maxResults: 10 },
-                    { type: "LABEL_DETECTION", maxResults: 5 },
-                    { type: "LOGO_DETECTION", maxResults: 5 },
-                    { type: "TEXT_DETECTION", maxResults: 5 },
-                  ],
-                },
-              ],
-            },
-            { headers: { "Content-Type": "application/json" } }
-          );
-
-          resolve(response);
+          // Call Netlify Function instead of Google Vision directly
+          const response = await fetch("/.netlify/functions/analyzeImage", {
+            method: "POST",
+            body: JSON.stringify({ imageBase64: imageContent }),
+          });
+          const data = await response.json();
+          resolve(data);
         } catch (err) {
           reject(err);
         }
@@ -123,10 +108,13 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
       reader.readAsDataURL(convertedImage);
     });
 
-    const itemName = extractItemNameFromResponse(visionApiResponse, setProductName);
-    const apiResponse = await fetchData(itemName, setLoading, setError);
+    const itemName = extractItemNameFromResponse({ data: { responses: [visionApiResponse] } }, setProductName);
 
-    return modifyData(apiResponse.data);
+    // Call Netlify Function for product search
+    const apiResponse = await fetch(`/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`);
+    const productsData = await apiResponse.json();
+
+    return modifyData(productsData.data);
   } catch (err) {
     console.error("Error handling image upload:", err);
     setError(err);
