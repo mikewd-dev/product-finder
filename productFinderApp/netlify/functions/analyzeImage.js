@@ -1,12 +1,16 @@
-import axios from "axios";
+import fetch from 'node-fetch';
 
-export const handler = async (event) => {
-  try {
-    const { imageBase64 } = JSON.parse(event.body);
+export async function handler(event, context) {
+  const GOOGLE_VISION_API = process.env.GOOGLE_VISION_API;
 
-    const googleResponse = await axios.post(
-      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API}`,
-      {
+  const { imageBase64 } = JSON.parse(event.body);
+
+  const response = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         requests: [
           {
             image: { content: imageBase64 },
@@ -15,23 +19,18 @@ export const handler = async (event) => {
               { type: "LABEL_DETECTION", maxResults: 5 },
               { type: "LOGO_DETECTION", maxResults: 5 },
               { type: "TEXT_DETECTION", maxResults: 5 },
-              { type: "WEB_DETECTION", maxResults: 5 },
-            ],
-          },
-        ],
-      },
-      { headers: { "Content-Type": "application/json" } }
-    );
+              { type: "WEB_DETECTION", maxResults: 5 }
+            ]
+          }
+        ]
+      })
+    }
+  );
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify(googleResponse.data),
-    };
-  } catch (error) {
-    console.error("Google Vision API error:", error.response?.data || error.message);
-    return {
-      statusCode: error.response?.status || 500,
-      body: JSON.stringify({ error: error.message }),
-    };
-  }
-};
+  const data = await response.json();
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(data)
+  };
+}
