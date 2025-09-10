@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
 export const handler = async (event) => {
-  console.log("⚡ analyzeImage function triggered");
+  console.log("analyzeImage function triggered");
 
   try {
     if (!event.body) {

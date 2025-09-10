@@ -64,6 +64,7 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
           // Call Netlify function for image analysis
           const response = await fetch("/.netlify/functions/analyzeImage", {
             method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageBase64 }),
           });
           const data = await response.json();
