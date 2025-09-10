@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../src/styles/ImageAnalysis.css';
 import ProductCarousel from "./ProductCarousel";
 import ProductGrid from "./ProductGrid";
-import {handleImageUpload} from "./utils/ImageHandlingAndApiCall"
+import {handleImageUpload} from "./utils/imageHandlingAndApiCall"
 import { handleUploadAndAnalyze } from './utils/handleUploadAndAnalyze';
 import AnalysisResults from './AnalysisResultsDisplay';
 const ImageAnalysis = () => {
-
+  
+  useEffect(() => {
+  fetch("/.netlify/functions/ping")
+    .then(res => res.json())
+    .then(data => console.log("Ping response:", data))
+    .catch(err => console.error("Ping error:", err));
+}, []);
   const [selectedImage, setSelectedImage] = useState(null);
   const [analysisResults, setAnalysisResults] = useState(null);
 
