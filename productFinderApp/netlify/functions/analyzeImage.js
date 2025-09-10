@@ -1,36 +1,47 @@
-import fetch from 'node-fetch';
+import axios from "axios";
+import formidable from "formidable";
 
-export async function handler(event, context) {
-  const GOOGLE_VISION_API = process.env.GOOGLE_VISION_API;
+export const handler = async (event, context) => {
+  try {
+    const form = new formidable.IncomingForm();
 
-  const { imageBase64 } = JSON.parse(event.body);
+    const file = await new Promise((resolve, reject) => {
+      form.parse(event, (err, fields, files) => {
+        if (err) reject(err);
+        resolve(files.file);
+      });
+    });
 
-  const response = await fetch(
-    `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    // Convert file to base64
+    const fs = require("fs");
+    const base64Image = fs.readFileSync(file.path, { encoding: "base64" });
+
+    // Call Google Vision
+    const googleResponse = await axios.post(
+      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_API_KEY}`,
+      {
         requests: [
           {
-            image: { content: imageBase64 },
+            image: { content: base64Image },
             features: [
-              { type: "PRODUCT_SEARCH", maxResults: 10 },
               { type: "LABEL_DETECTION", maxResults: 5 },
-              { type: "LOGO_DETECTION", maxResults: 5 },
               { type: "TEXT_DETECTION", maxResults: 5 },
-              { type: "WEB_DETECTION", maxResults: 5 }
-            ]
-          }
-        ]
-      })
-    }
-  );
+            ],
+          },
+        ],
+      }
+    );
 
-  const data = await response.json();
+    return {
+      statusCode: 200,
+      body: JSON.stringify(googleResponse.data.responses[0]),
+    };
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify(data)
-  };
-}
+  } catch (error) {
+    console.error(error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: error.message }),
+    };
+  }
+};

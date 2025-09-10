@@ -1,47 +1,30 @@
 import axios from "axios";
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-
-    reader.onload = () => {
-      const base64Image = reader.result.split(",")[1];
-      resolve(base64Image);
-    };
-
-    reader.onerror = (error) => reject(error);
-  });
-}
-
 export async function handleUploadAndAnalyze(file) {
   try {
-    
-    const base64Image = await fileToBase64(file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const googleResponse = await axios.post(
-      "https://vision.googleapis.com/v1/images:annotate?key=YOUR_GOOGLE_API_KEY",
-      {
-        requests: [
-          {
-            image: { content: base64Image },
-            features: [
-              { type: "LABEL_DETECTION", maxResults: 5 },
-              { type: "TEXT_DETECTION", maxResults: 5 },
-            ],
-          },
-        ],
-      }
-    );
+    // Call your Netlify function
+    const response = await axios.post("/.netlify/functions/analyzeImage", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
 
-    const labels = googleResponse.data.responses[0].labelAnnotations || [];
-    const texts = googleResponse.data.responses[0].textAnnotations || [];
+    // The Netlify function returns Google Vision result
+    const googleData = response.data;
 
-    const labelText = labels.map((l) => l.description).join(" ");
-    const textText = texts.map((t) => t.description).join(" ");
+    // Combine labels and text
+    const labels = googleData.labelAnnotations || [];
+    const texts = googleData.textAnnotations || [];
+
+    const labelText = labels.map(l => l.description).join(" ");
+    const textText = texts.map(t => t.description).join(" ");
 
     const combinedData = `${labelText} ${textText}`;
 
+    // Call RapidAPI with combined data
     const rapidApiResponse = await axios.post(
       "https://your-rapidapi-endpoint.com/search",
       { query: combinedData },
@@ -54,6 +37,7 @@ export async function handleUploadAndAnalyze(file) {
     );
 
     return rapidApiResponse.data;
+
   } catch (error) {
     console.error("Error analyzing image:", error);
     throw error;
