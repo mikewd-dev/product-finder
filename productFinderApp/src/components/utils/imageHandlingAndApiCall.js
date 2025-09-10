@@ -1,6 +1,6 @@
 import heic2any from "heic2any";
 
-// Old-style product modification (like GitHub version)
+// 🔹 Safely modify and normalize product data
 export const modifyData = (products = []) => {
   if (!Array.isArray(products)) return [];
 
@@ -18,7 +18,7 @@ export const modifyData = (products = []) => {
   }));
 };
 
-// Extract the best item name from Vision API response
+// 🔹 Extract the best item name from Vision API response
 export const extractItemNameFromResponse = (response, setProductName) => {
   let extractedText = response?.data?.responses?.[0]?.fullTextAnnotation?.text;
 
@@ -45,22 +45,14 @@ export const extractItemNameFromResponse = (response, setProductName) => {
   return extractedText;
 };
 
-// Fetch data from RapidAPI safely
+// 🔹 Fetch product data through Netlify function
 const fetchData = async (itemName, setLoading, setError) => {
-  const options = {
-    method: "GET",
-    url: "https://real-time-product-search.p.rapidapi.com/search",
-    params: { q: itemName, country: "gb", language: "en", limit: 29, sort_by: "LOWEST_PRICE" },
-    headers: {
-      "X-RapidAPI-Key": import.meta.env.VITE_REACT_APP_RAPIDAPI_KEY,
-      "X-RapidAPI-Host": import.meta.env.VITE_REACT_APP_RAPIDAPI_HOST,
-    },
-  };
-
   try {
     setLoading(true);
-    const response = await fetch(`/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`);
-    const data = await response.json();
+    const apiResponse = await fetch(
+      `/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`
+    );
+    const data = await apiResponse.json();
     return data ?? { data: [] };
   } catch (error) {
     console.error("Error fetching product data:", error);
@@ -71,8 +63,13 @@ const fetchData = async (itemName, setLoading, setError) => {
   }
 };
 
-// Main image upload handler
-export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
+// 🔹 Main image upload handler
+export const handleImageUpload = async (
+  imageFile,
+  setProductName,
+  setError,
+  setLoading
+) => {
   try {
     // Convert HEIC or unsupported formats
     let convertedImage = imageFile;
@@ -104,9 +101,12 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
     });
 
     // Extract the best item name
-    const itemName = extractItemNameFromResponse({ data: { responses: [visionApiResponse] } }, setProductName);
+    const itemName = extractItemNameFromResponse(
+      { data: { responses: [visionApiResponse] } },
+      setProductName
+    );
 
-    // Call RapidAPI / fetchProducts
+    // Call RapidAPI via Netlify function
     const productsData = await fetchData(itemName, setLoading, setError);
 
     return modifyData(productsData.data);
