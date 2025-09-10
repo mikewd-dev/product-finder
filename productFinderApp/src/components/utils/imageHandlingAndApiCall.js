@@ -1,31 +1,24 @@
-import axios from "axios";
 import heic2any from "heic2any";
-import { imageFileResizer } from "react-image-file-resizer";
 
-// Safely modify and normalize product data
+// Old-style product modification (like GitHub version)
 export const modifyData = (products = []) => {
   if (!Array.isArray(products)) return [];
 
-  return products.map((product) => {
-    const shippingValue = product?.offer?.shipping ?? 0;
-    const imagesValue = Array.isArray(product?.product_photos)
+  return products.map((product) => ({
+    name: product?.product_title,
+    description: product?.product_description,
+    retailer: product?.offer?.store_name,
+    rating: product?.offer?.store_rating,
+    price: product?.offer?.price ? product.offer.price.replace(/£/g, "") : undefined,
+    shipping: product?.offer?.shipping,
+    link: product?.offer?.offer_page_url,
+    images: Array.isArray(product?.product_photos)
       ? product.product_photos
-      : [product?.product_photos].filter(Boolean);
-
-    return {
-      name: product?.product_title ?? "Unknown",
-      description: product?.product_description ?? "",
-      retailer: product?.offer?.store_name ?? "Unknown",
-      rating: product?.offer?.store_rating ?? 0,
-      price: product?.offer?.price?.replace(/£/g, "") ?? "0",
-      shipping: shippingValue,
-      link: product?.offer?.offer_page_url ?? "",
-      images: imagesValue,
-    };
-  });
+      : [product?.product_photos].filter(Boolean),
+  }));
 };
 
-// Extract item name from Vision API response, safely using multiple fields
+// Extract the best item name from Vision API response
 export const extractItemNameFromResponse = (response, setProductName) => {
   let extractedText = response?.data?.responses?.[0]?.fullTextAnnotation?.text;
 
@@ -66,8 +59,9 @@ const fetchData = async (itemName, setLoading, setError) => {
 
   try {
     setLoading(true);
-    const response = await axios.request(options);
-    return response.data ?? { data: [] };
+    const response = await fetch(`/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`);
+    const data = await response.json();
+    return data ?? { data: [] };
   } catch (error) {
     console.error("Error fetching product data:", error);
     setError(error);
@@ -80,20 +74,21 @@ const fetchData = async (itemName, setLoading, setError) => {
 // Main image upload handler
 export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
+    // Convert HEIC or unsupported formats
     let convertedImage = imageFile;
     if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
       convertedImage = await heic2any({ blob: imageFile });
     }
 
+    // Convert image to Base64
     const reader = new FileReader();
-
     const visionApiResponse = await new Promise((resolve, reject) => {
       reader.onload = async () => {
         try {
           if (!reader.result) return reject("Failed to read image");
           const imageContent = reader.result.split(",")[1];
 
-          // Call Netlify Function instead of Google Vision directly
+          // Call Netlify function for image analysis
           const response = await fetch("/.netlify/functions/analyzeImage", {
             method: "POST",
             body: JSON.stringify({ imageBase64: imageContent }),
@@ -108,11 +103,11 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
       reader.readAsDataURL(convertedImage);
     });
 
+    // Extract the best item name
     const itemName = extractItemNameFromResponse({ data: { responses: [visionApiResponse] } }, setProductName);
 
-    // Call Netlify Function for product search
-    const apiResponse = await fetch(`/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`);
-    const productsData = await apiResponse.json();
+    // Call RapidAPI / fetchProducts
+    const productsData = await fetchData(itemName, setLoading, setError);
 
     return modifyData(productsData.data);
   } catch (err) {

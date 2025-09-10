@@ -1,33 +1,45 @@
-import axios from "axios";
 import heic2any from "heic2any";
 
-// Safely modify product data
+// Old-style product modification (like GitHub version)
 const modifyData = (products = []) => {
   if (!Array.isArray(products)) return [];
-  return products.map((product) => {
-    const shipping = product?.offer?.shipping ?? 0;
-    const images = Array.isArray(product?.product_photos)
+  return products.map((product) => ({
+    name: product?.product_title,
+    description: product?.product_description,
+    retailer: product?.offer?.store_name,
+    rating: product?.offer?.store_rating,
+    price: product?.offer?.price ? product.offer.price.replace(/£/g, "") : undefined,
+    shipping: product?.offer?.shipping,
+    link: product?.offer?.offer_page_url,
+    images: Array.isArray(product?.product_photos)
       ? product.product_photos
-      : [product?.product_photos].filter(Boolean);
-
-    return {
-      name: product?.product_title ?? "Unknown",
-      description: product?.product_description ?? "",
-      retailer: product?.offer?.store_name ?? "Unknown",
-      rating: product?.offer?.store_rating ?? 0,
-      price: product?.offer?.price?.replace(/£/g, "") ?? "0",
-      shipping,
-      link: product?.offer?.offer_page_url ?? "",
-      images,
-    };
-  });
+      : [product?.product_photos].filter(Boolean),
+  }));
 };
 
-// Extract item name from Netlify function response
+// Extract the best item name from Vision API response
 const extractItemName = (response, setProductName) => {
-  const text = response?.itemName ?? "Unknown Item";
-  setProductName(text);
-  return text;
+  if (!response) return "Unknown item";
+
+  // Try webDetection best guess first
+  const webGuess =
+    response?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
+  if (webGuess) {
+    setProductName(webGuess);
+    return webGuess;
+  }
+
+  // Fallback to first labelAnnotation
+  const labelAnnotation =
+    response?.labelAnnotations?.[0]?.description?.trim();
+  if (labelAnnotation) {
+    setProductName(labelAnnotation);
+    return labelAnnotation;
+  }
+
+  // Final fallback
+  setProductName("Unknown item");
+  return "Unknown item";
 };
 
 // Main handler
@@ -64,11 +76,13 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
       reader.readAsDataURL(convertedImage);
     });
 
-    // Extract item name
+    // Extract the best item name
     const itemName = extractItemName(visionApiResponse, setProductName);
 
-    // Call Netlify function for product search
-    const apiResponse = await fetch(`/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`);
+    // Call RapidAPI / fetchProducts
+    const apiResponse = await fetch(
+      `/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`
+    );
     const productsData = await apiResponse.json();
 
     return modifyData(productsData.data);
