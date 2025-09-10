@@ -1,8 +1,16 @@
-export const handler = async (event) => {
-  try {
-    const GOOGLE_VISION_API = process.env.GOOGLE_VISION_API;
-    const { imageBase64 } = JSON.parse(event.body);
+// netlify/functions/analyzeImage.js
+import fetch from "node-fetch";
 
+export async function handler(event) {
+  try {
+    const { imageBase64 } = JSON.parse(event.body);
+    const GOOGLE_VISION_API = process.env.GOOGLE_VISION_API;
+
+    if (!GOOGLE_VISION_API) {
+      throw new Error("Missing GOOGLE_VISION_API environment variable");
+    }
+
+    // Call Google Vision API
     const response = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API}`,
       {
@@ -27,15 +35,24 @@ export const handler = async (event) => {
 
     const data = await response.json();
 
+    // If Google Vision responded with an error
+    if (data.error) {
+      console.error("Google Vision API error:", data.error);
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: data.error }),
+      };
+    }
+
     return {
       statusCode: 200,
-      body: JSON.stringify(data),
+      body: JSON.stringify(data.responses[0]), // just send the first response
     };
-  } catch (error) {
-    console.error("Google Vision API error:", error.message);
+  } catch (err) {
+    console.error("Error in analyzeImage:", err.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({ error: err.message }),
     };
   }
-};
+}
