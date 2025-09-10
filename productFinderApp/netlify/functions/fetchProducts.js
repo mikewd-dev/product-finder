@@ -1,23 +1,29 @@
-import fetch from 'node-fetch';
+const axios = require("axios");
 
-export async function handler(event, context) {
-  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
-  const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST;
+exports.handler = async function(event, context) {
+  try {
+    const { query } = JSON.parse(event.body);
 
-  const productQuery = event.queryStringParameters.q; // e.g., product name
+    const rapidApiResponse = await axios.post(
+      process.env.RAPIDAPI_URL,
+      { query },
+      {
+        headers: {
+          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-  const response = await fetch(`https://${RAPIDAPI_HOST}/search?q=${productQuery}`, {
-    method: 'GET',
-    headers: {
-      'X-RapidAPI-Key': RAPIDAPI_KEY,
-      'X-RapidAPI-Host': RAPIDAPI_HOST
-    }
-  });
-
-  const data = await response.json();
-
-  return {
-    statusCode: 200,
-    body: JSON.stringify(data)
-  };
-}
+    return {
+      statusCode: 200,
+      body: JSON.stringify(rapidApiResponse.data),
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Server error fetching products" }),
+    };
+  }
+};
