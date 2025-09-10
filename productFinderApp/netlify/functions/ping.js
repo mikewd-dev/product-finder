@@ -1,6 +1,4 @@
-// netlify/functions/ping.js
-exports.handler = async (event, context) => {
-  console.log("Ping function was hit!");
+export const handler = async (event, context) => {
   return {
     statusCode: 200,
     body: JSON.stringify({ message: "pong" }),
