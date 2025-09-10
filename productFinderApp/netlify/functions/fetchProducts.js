@@ -1,29 +1,31 @@
-const axios = require("axios");
+import axios from "axios";
 
-exports.handler = async function(event, context) {
+export const handler = async (event) => {
   try {
-    const { query } = JSON.parse(event.body);
+    const { q } = event.queryStringParameters;
 
-    const rapidApiResponse = await axios.post(
-      process.env.RAPIDAPI_URL,
-      { query },
-      {
-        headers: {
-          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await axios.get("https://real-time-product-search.p.rapidapi.com/search", {
+      params: {
+        q,
+        country: "gb",
+        language: "en",
+        limit: 29,
+        sort_by: "LOWEST_PRICE",
+      },
+      headers: {
+        "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+        "X-RapidAPI-Host": process.env.RAPIDAPI_HOST,
+      },
+    });
 
     return {
       statusCode: 200,
-      body: JSON.stringify(rapidApiResponse.data),
+      body: JSON.stringify(response.data),
     };
   } catch (error) {
-    console.error(error);
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Server error fetching products" }),
+      statusCode: error.response?.status || 500,
+      body: JSON.stringify({ error: error.message }),
     };
   }
 };

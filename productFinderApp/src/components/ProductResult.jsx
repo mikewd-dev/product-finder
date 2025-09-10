@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import DragNDrop from "./DragNDrop";
 import ProductGrid from "./ProductGrid";
 import { useDrag } from "react-dnd";
