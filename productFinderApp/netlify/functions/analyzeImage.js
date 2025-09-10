@@ -14,7 +14,13 @@ export async function handler(event, context) {
         requests: [
           {
             image: { content: imageBase64 },
-            features: [{ type: 'LABEL_DETECTION', maxResults: 5 }]
+            features: [
+              { type: "PRODUCT_SEARCH", maxResults: 10 },
+              { type: "LABEL_DETECTION", maxResults: 5 },
+              { type: "LOGO_DETECTION", maxResults: 5 },
+              { type: "TEXT_DETECTION", maxResults: 5 },
+              { type: "WEB_DETECTION", maxResults: 5 }
+            ]
           }
         ]
       })
