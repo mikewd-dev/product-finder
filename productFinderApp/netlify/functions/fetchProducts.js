@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+/* import fetch from "node-fetch";
 
 export const handler = async (event) => {
   try {
@@ -58,4 +58,4 @@ export const handler = async (event) => {
       body: JSON.stringify({ error: err.message }),
     };
   }
-};
+}; */
