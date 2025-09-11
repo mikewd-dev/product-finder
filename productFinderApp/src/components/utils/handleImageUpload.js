@@ -1,6 +1,6 @@
 import heic2any from "heic2any";
 
-// Old-style product modification (like GitHub version)
+// Modify RapidAPI data to your format
 const modifyData = (products = []) => {
   if (!Array.isArray(products)) return [];
   return products.map((product) => ({
@@ -17,32 +17,26 @@ const modifyData = (products = []) => {
   }));
 };
 
-// Extract the best item name from Vision API response
+// Extract item name from Vision API response
 const extractItemName = (response, setProductName) => {
   if (!response) return "Unknown item";
 
-  // Try webDetection best guess first
-  const webGuess =
-    response?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
+  const webGuess = response?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
   if (webGuess) {
     setProductName(webGuess);
     return webGuess;
   }
 
-  // Fallback to first labelAnnotation
-  const labelAnnotation =
-    response?.labelAnnotations?.[0]?.description?.trim();
+  const labelAnnotation = response?.labelAnnotations?.[0]?.description?.trim();
   if (labelAnnotation) {
     setProductName(labelAnnotation);
     return labelAnnotation;
   }
 
-  // Final fallback
   setProductName("Unknown item");
   return "Unknown item";
 };
 
-// Main handler
 export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
     setLoading(true);
@@ -61,10 +55,8 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
           if (!reader.result) return reject("Failed to read image");
           const imageBase64 = reader.result.split(",")[1];
 
-          // Call Netlify function for image analysis
           const response = await fetch("/.netlify/functions/analyzeImage", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageBase64 }),
           });
           const data = await response.json();
@@ -77,14 +69,24 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
       reader.readAsDataURL(convertedImage);
     });
 
-    // Extract the best item name
+    // Extract item name
     const itemName = extractItemName(visionApiResponse, setProductName);
+    console.log("🔍 Item name extracted from Vision API:", itemName);
+
+    const query = itemName?.trim();
+    if (!query || query === "Unknown item") {
+      setError("Could not detect a valid product from the image.");
+      return [];
+    }
 
     // Call RapidAPI / fetchProducts
-    const apiResponse = await fetch(
-      `/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`
-    );
+    const apiResponse = await fetch(`/.netlify/functions/fetchProducts?q=${encodeURIComponent(query)}`);
     const productsData = await apiResponse.json();
+
+    if (productsData.error) {
+      setError(productsData.error);
+      return [];
+    }
 
     return modifyData(productsData.data);
   } catch (err) {
