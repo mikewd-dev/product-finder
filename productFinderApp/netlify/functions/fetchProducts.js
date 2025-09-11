@@ -11,7 +11,7 @@ export const handler = async (event) => {
       throw new Error("RapidAPI key or host not set in environment variables.");
     }
 
-
+    // Build URL with query params
     const url = new URL(`https://${RAPIDAPI_HOST}/search`);
     url.search = new URLSearchParams({
       q,
@@ -19,9 +19,9 @@ export const handler = async (event) => {
       language: "en",
       limit: "2",
       sort_by: "LOWEST_PRICE",
-    }).toString();
+    });
 
-    console.log("RapidAPI Request:", url.toString());
+    console.log("📡 RapidAPI Request:", url.toString());
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -32,8 +32,11 @@ export const handler = async (event) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("RapidAPI error response:", errorText);
-      throw new Error(`RapidAPI request failed with status ${response.status}`);
+      console.error("❌ RapidAPI error response:", errorText);
+      return {
+        statusCode: response.status,
+        body: JSON.stringify({ error: errorText }),
+      };
     }
 
     const data = await response.json();
