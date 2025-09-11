@@ -18,25 +18,31 @@ const modifyData = (products = []) => {
 };
 
 // Extract item name from Vision API response
-const extractItemName = (response, setProductName) => {
-  if (!response) return "Unknown item";
+const extractItemName = (visionData, setProductName) => {
+  if (!visionData || !visionData.responses) return "Unknown item";
 
+  const response = visionData.responses[0];
+
+  // Try webDetection best guess first
   const webGuess = response?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
   if (webGuess) {
     setProductName(webGuess);
     return webGuess;
   }
 
+  // Fallback to first labelAnnotation
   const labelAnnotation = response?.labelAnnotations?.[0]?.description?.trim();
   if (labelAnnotation) {
     setProductName(labelAnnotation);
     return labelAnnotation;
   }
 
+  // Final fallback
   setProductName("Unknown item");
   return "Unknown item";
 };
 
+// Main handler
 export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
     setLoading(true);
@@ -55,11 +61,13 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
           if (!reader.result) return reject("Failed to read image");
           const imageBase64 = reader.result.split(",")[1];
 
+          // Call Netlify function for image analysis
           const response = await fetch("/.netlify/functions/analyzeImage", {
             method: "POST",
             body: JSON.stringify({ imageBase64 }),
           });
           const data = await response.json();
+          console.log("Vision API response data:", data); // ✅ Debugging
           resolve(data);
         } catch (err) {
           reject(err);
@@ -71,7 +79,7 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
 
     // Extract item name
     const itemName = extractItemName(visionApiResponse, setProductName);
-    console.log("🔍 Item name extracted from Vision API:", itemName);
+    console.log("🔍 Item name extracted:", itemName);
 
     const query = itemName?.trim();
     if (!query || query === "Unknown item") {
