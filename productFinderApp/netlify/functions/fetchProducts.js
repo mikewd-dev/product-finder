@@ -5,7 +5,7 @@ export const handler = async (event) => {
     const q = event.queryStringParameters?.q?.trim();
 
     if (!q) {
-      console.warn("⚠️ fetchProducts called without a query. Returning empty array.");
+      console.warn("fetchProducts called without a query. Returning empty array.");
       return {
         statusCode: 200,
         body: JSON.stringify({ data: [] }),

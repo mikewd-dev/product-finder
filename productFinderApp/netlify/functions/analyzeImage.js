@@ -1,18 +1,25 @@
-// netlify/functions/analyzeImage.js
 import fetch from "node-fetch";
 
-export async function handler(event) {
+// Helper to extract item name from Google Vision response
+const extractItemName = (visionResponse) => {
+  if (!visionResponse) return "Unknown item";
+
+  const bestGuess = visionResponse?.responses?.[0]?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
+  if (bestGuess) return bestGuess;
+
+  const label = visionResponse?.responses?.[0]?.labelAnnotations?.[0]?.description?.trim();
+  if (label) return label;
+
+  return "Unknown item";
+};
+
+export const handler = async (event) => {
   try {
     const { imageBase64 } = JSON.parse(event.body);
-    const GOOGLE_VISION_API = process.env.GOOGLE_VISION_API;
 
-    if (!GOOGLE_VISION_API) {
-      throw new Error("Missing GOOGLE_VISION_API environment variable");
-    }
-
-    // Call Google Vision API
-    const response = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API}`,
+    // 1️⃣ Call Google Vision API
+    const visionResponse = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -33,26 +40,50 @@ export async function handler(event) {
       }
     );
 
-    const data = await response.json();
+    const visionData = await visionResponse.json();
+    const itemName = extractItemName(visionData);
 
-    // If Google Vision responded with an error
-    if (data.error) {
-      console.error("Google Vision API error:", data.error);
+    if (!itemName || itemName === "Unknown item") {
       return {
-        statusCode: 400,
-        body: JSON.stringify({ error: data.error }),
+        statusCode: 200,
+        body: JSON.stringify({ data: [], itemName }),
       };
     }
 
+    // 2️⃣ Call RapidAPI using extracted item name
+    const rapidApiUrl = new URL(`https://${process.env.RAPIDAPI_HOST}/search`);
+    rapidApiUrl.search = new URLSearchParams({
+      q: itemName,
+      country: "gb",
+      language: "en",
+      limit: "10",
+      sort_by: "LOWEST_PRICE",
+    }).toString();
+
+    const rapidResponse = await fetch(rapidApiUrl.toString(), {
+      headers: {
+        "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+        "X-RapidAPI-Host": process.env.RAPIDAPI_HOST,
+      },
+    });
+
+    if (!rapidResponse.ok) {
+      const errorText = await rapidResponse.text();
+      console.error("RapidAPI error response:", errorText);
+      throw new Error(`RapidAPI request failed with status ${rapidResponse.status}`);
+    }
+
+    const products = await rapidResponse.json();
+
     return {
       statusCode: 200,
-      body: JSON.stringify(data.responses[0]), // just send the first response
+      body: JSON.stringify({ itemName, data: products }),
     };
   } catch (err) {
-    console.error("Error in analyzeImage:", err.message);
+    console.error("Error in analyzeImage handler:", err.message);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
     };
   }
-}
+};
