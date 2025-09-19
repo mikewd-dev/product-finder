@@ -1,6 +1,5 @@
-/* import { handleImageUpload } from "./imageHandlingAndApiCall";
+import { handleImageUpload } from "./imageHandlingAndApiCall";
 
-// This function will run when you click "Upload and Analyze"
 export const handleUploadAndAnalyze = async (
   imageFile,
   setProductName,
@@ -13,7 +12,7 @@ export const handleUploadAndAnalyze = async (
     setLoading(true);
     setError(null);
 
-    // 🔹 Do the Vision + RapidAPI flow
+    // 1️⃣ Fetch products (Vision + RapidAPI flow)
     const products = await handleImageUpload(
       imageFile,
       setProductName,
@@ -21,9 +20,7 @@ export const handleUploadAndAnalyze = async (
       setLoading
     );
 
-    console.log("🔍 Raw products from API:", products);
-
-    // 🔹 Normalize product data for UI
+    // Normalize for UI
     const cleanedProducts = Array.isArray(products)
       ? products.map((p, i) => ({
           id: i,
@@ -38,68 +35,38 @@ export const handleUploadAndAnalyze = async (
         }))
       : [];
 
-    console.log("✅ Cleaned Products (UI-ready):", cleanedProducts);
-
     setProductData(cleanedProducts);
 
-    // 🔹 Example AnalysisResults normalization (Google Vision)
-    // If Vision returns empty, make sure you still give the UI something predictable
-    const normalizedAnalysis = {
-      pagesWithMatchingImages:
-        products?.pagesWithMatchingImages?.map((page, i) => ({
-          id: i,
-          url: page.url,
-        })) || [],
-      visuallySimilarImages:
-        products?.visuallySimilarImages?.map((img, i) => ({
-          id: i,
-          url: img.url,
-        })) || [],
+    // 2️⃣ Call Netlify function for Vision Web Detection (like old code)
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const base64Image = reader.result.split(",")[1];
+
+        const response = await fetch("/.netlify/functions/analyzeImage", {
+          method: "POST",
+          body: JSON.stringify({
+            imageBase64: base64Image,
+            features: [{ type: "WEB_DETECTION" }],
+          }),
+        });
+
+        const responseData = await response.json();
+        console.log("Vision Web Detection:", responseData);
+
+        const webDetection = responseData.responses?.[0]?.webDetection || {};
+        setAnalysisResults(webDetection);
+      } catch (err) {
+        console.error("Vision API error:", err);
+        setAnalysisResults({});
+      }
     };
 
-    console.log("✅ Normalized AnalysisResults:", normalizedAnalysis);
-
-    setAnalysisResults(normalizedAnalysis);
+    reader.readAsDataURL(imageFile);
   } catch (err) {
     console.error("❌ handleUploadAndAnalyze error:", err);
     setError(err.message || "Something went wrong");
   } finally {
     setLoading(false);
   }
-}; */
-
-import { handleImageUpload } from "./imageHandlingAndApiCall";
-
-export const handleUploadAndAnalyze = async (selectedImage, setProductName, setError, setLoading,setProductData, setAnalysisResults) => {
-    if (!selectedImage) {
-      alert('Please select an image first.');
-      return;
-    }
-
-    const utilResponse = await handleImageUpload(selectedImage, setProductName, setError, setLoading);
-    setProductData(utilResponse);
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64Image = reader.result.split(',')[1];
-      const apiKey = import.meta.env.VITE_REACT_APP_GOOGLE_VISION_API;
-
-      const apiUrl = `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requests: [{ image: { content: base64Image }, features: [{ type: 'WEB_DETECTION' }] }],
-        }),
-      });
-
-      const responseData = await response.json();
-
-
-      setAnalysisResults(responseData.responses[0].webDetection);
-    };
-
-    reader.readAsDataURL(selectedImage);
-  };
+};
