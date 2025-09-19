@@ -1,4 +1,4 @@
-/* import fetch from "node-fetch";
+import fetch from "node-fetch";
 
 export const handler = async (event) => {
   try {
@@ -21,14 +21,14 @@ export const handler = async (event) => {
 
     const url = new URL(`https://${RAPIDAPI_HOST}/search`);
     url.search = new URLSearchParams({
-      q: itemName,
+      q,
       country: "gb",
       language: "en",
       limit: "2",
       sort_by: "LOWEST_PRICE",
     }).toString();
 
-    console.log("📡 RapidAPI Request URL:", url.toString());
+    console.log("RapidAPI Request URL:", url.toString());
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -39,7 +39,7 @@ export const handler = async (event) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ RapidAPI error response:", errorText);
+      console.error("RapidAPI error response:", errorText);
       return {
         statusCode: response.status,
         body: JSON.stringify({ error: `RapidAPI request failed: ${errorText}` }),
@@ -58,4 +58,4 @@ export const handler = async (event) => {
       body: JSON.stringify({ error: err.message }),
     };
   }
-}; */
+}; 
