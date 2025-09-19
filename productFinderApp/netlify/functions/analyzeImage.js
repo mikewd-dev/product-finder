@@ -17,7 +17,7 @@ export const handler = async (event) => {
   try {
     const { imageBase64 } = JSON.parse(event.body);
 
-    // 1️⃣ Call Google Vision API
+    //Call Google Vision API
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API}`,
       {
@@ -50,7 +50,7 @@ export const handler = async (event) => {
       };
     }
 
-    // 2️⃣ Call RapidAPI using extracted item name
+    //Call RapidAPI using extracted item name
     const rapidApiUrl = new URL(`https://${process.env.RAPIDAPI_HOST}/search`);
     rapidApiUrl.search = new URLSearchParams({
       q: itemName,
