@@ -18,7 +18,7 @@ const modifyData = (products = []) => {
 };
 
 // Keep this single copy of handleImageUpload
-export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
+export const handleUploadAndAnalyze= async (imageFile, setProductName, setError, setLoading) => {
   try {
     setLoading(true);
 
