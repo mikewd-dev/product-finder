@@ -21,7 +21,7 @@ export const handler = async (event) => {
 
     const url = new URL(`https://${RAPIDAPI_HOST}/search`);
     url.search = new URLSearchParams({
-      q,
+      q:q,
       country: "gb",
       language: "en",
       limit: "2",
