@@ -1,45 +1,69 @@
-export async function handleUploadAndAnalyze(file) {
+import heic2any from "heic2any";
+
+// Keep this single copy of modifyData
+const modifyData = (products = []) => {
+  if (!Array.isArray(products)) return [];
+  return products.map((product) => ({
+    name: product?.product_title,
+    description: product?.product_description,
+    retailer: product?.offer?.store_name,
+    rating: product?.offer?.store_rating,
+    price: product?.offer?.price ? product.offer.price.replace(/£/g, "") : undefined,
+    shipping: product?.offer?.shipping,
+    link: product?.offer?.offer_page_url,
+    images: Array.isArray(product?.product_photos)
+      ? product.product_photos
+      : [product?.product_photos].filter(Boolean),
+  }));
+};
+
+// Keep this single copy of handleImageUpload
+export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
-    // Convert image to Base64
+    setLoading(true);
+
+    let convertedImage = imageFile;
+    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
+      convertedImage = await heic2any({ blob: imageFile });
+    }
+
     const reader = new FileReader();
-    const base64Image = await new Promise((resolve, reject) => {
-      reader.onload = () => {
-        if (!reader.result) return reject("Failed to read image");
-        resolve(reader.result.split(",")[1]); // strip "data:image/...;base64,"
+    const analyzeResponse = await new Promise((resolve, reject) => {
+      reader.onload = async () => {
+        try {
+          if (!reader.result) return reject("Failed to read image");
+          const imageBase64 = reader.result.split(",")[1];
+
+          const response = await fetch("/.netlify/functions/analyzeImage", {
+            method: "POST",
+            body: JSON.stringify({ imageBase64 }),
+          });
+
+          const data = await response.json();
+          console.log("analyzeImage response:", data);
+          resolve(data);
+        } catch (err) {
+          reject(err);
+        }
       };
       reader.onerror = () => reject("Failed to read image file");
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(convertedImage);
     });
 
-    const response = await fetch("/.netlify/functions/analyzeImage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageBase64: base64Image }),
-    });
+    const itemName = analyzeResponse.itemName || "Unknown item";
+    setProductName(itemName);
 
-    if (!response.ok) throw new Error(`AnalyzeImage failed: ${response.status}`);
-    const googleData = await response.json();
+    if (!analyzeResponse.data || analyzeResponse.data.length === 0) {
+      setError("No products found for this item.");
+      return [];
+    }
 
-    const labels = googleData.responses?.[0]?.labelAnnotations || [];
-    const texts = googleData.responses?.[0]?.textAnnotations || [];
-
-    const labelText = labels.map(l => l.description).join(" ");
-    const textText = texts.map(t => t.description).join(" ");
-
-    const combinedData = `${labelText} ${textText}`.trim();
-
-  
-    const rapidResponse = await fetch(
-      `/.netlify/functions/fetchProducts?q=${encodeURIComponent(combinedData)}`
-    );
-
-    if (!rapidResponse.ok) throw new Error(`fetchProducts failed: ${rapidResponse.status}`);
-    const rapidData = await rapidResponse.json();
-
-    return rapidData;
-
-  } catch (error) {
-    console.error("Error in handleUploadAndAnalyze:", error);
-    throw error;
+    return modifyData(analyzeResponse.data);
+  } catch (err) {
+    console.error("Error handling image upload:", err);
+    setError(err);
+    return [];
+  } finally {
+    setLoading(false);
   }
-}
+};
