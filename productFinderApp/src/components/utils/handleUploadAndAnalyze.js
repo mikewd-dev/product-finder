@@ -1,68 +1,68 @@
-import heic2any from "heic2any";
+import { handleImageUpload } from "./imageHandlingAndApiCall";
 
-// Keep this single copy of modifyData
-const modifyData = (products = []) => {
-  if (!Array.isArray(products)) return [];
-  return products.map((product) => ({
-    name: product?.product_title,
-    description: product?.product_description,
-    retailer: product?.offer?.store_name,
-    rating: product?.offer?.store_rating,
-    price: product?.offer?.price ? product.offer.price.replace(/£/g, "") : undefined,
-    shipping: product?.offer?.shipping,
-    link: product?.offer?.offer_page_url,
-    images: Array.isArray(product?.product_photos)
-      ? product.product_photos
-      : [product?.product_photos].filter(Boolean),
-  }));
-};
-
-// Keep this single copy of handleImageUpload
-export const handleUploadAndAnalyze= async (imageFile, setProductName, setError, setLoading) => {
+// This function will run when you click "Upload and Analyze"
+export const handleUploadAndAnalyze = async (
+  imageFile,
+  setProductName,
+  setError,
+  setLoading,
+  setProductData,
+  setAnalysisResults
+) => {
   try {
     setLoading(true);
+    setError(null);
 
-    let convertedImage = imageFile;
-    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
-      convertedImage = await heic2any({ blob: imageFile });
-    }
+    // 🔹 Do the Vision + RapidAPI flow
+    const products = await handleImageUpload(
+      imageFile,
+      setProductName,
+      setError,
+      setLoading
+    );
 
-    const reader = new FileReader();
-    const analyzeResponse = await new Promise((resolve, reject) => {
-      reader.onload = async () => {
-        try {
-          if (!reader.result) return reject("Failed to read image");
-          const imageBase64 = reader.result.split(",")[1];
+    console.log("🔍 Raw products from API:", products);
 
-          const response = await fetch("/.netlify/functions/analyzeImage", {
-            method: "POST",
-            body: JSON.stringify({ imageBase64 }),
-          });
+    // 🔹 Normalize product data for UI
+    const cleanedProducts = Array.isArray(products)
+      ? products.map((p, i) => ({
+          id: i,
+          title: p?.name || "Untitled Product",
+          description: p?.description || "",
+          retailer: p?.retailer || "Unknown Store",
+          rating: p?.rating ?? null,
+          price: p?.price || "N/A",
+          shipping: p?.shipping || "Not provided",
+          link: p?.link || "#",
+          image: p?.images?.[0] || "/placeholder.png",
+        }))
+      : [];
 
-          const data = await response.json();
-          console.log("analyzeImage response:", data);
-          resolve(data);
-        } catch (err) {
-          reject(err);
-        }
-      };
-      reader.onerror = () => reject("Failed to read image file");
-      reader.readAsDataURL(convertedImage);
-    });
+    console.log("✅ Cleaned Products (UI-ready):", cleanedProducts);
 
-    const itemName = analyzeResponse.itemName || "Unknown item";
-    setProductName(itemName);
+    setProductData(cleanedProducts);
 
-    if (!analyzeResponse.data || analyzeResponse.data.length === 0) {
-      setError("No products found for this item.");
-      return [];
-    }
+    // 🔹 Example AnalysisResults normalization (Google Vision)
+    // If Vision returns empty, make sure you still give the UI something predictable
+    const normalizedAnalysis = {
+      pagesWithMatchingImages:
+        products?.pagesWithMatchingImages?.map((page, i) => ({
+          id: i,
+          url: page.url,
+        })) || [],
+      visuallySimilarImages:
+        products?.visuallySimilarImages?.map((img, i) => ({
+          id: i,
+          url: img.url,
+        })) || [],
+    };
 
-    return modifyData(analyzeResponse.data);
+    console.log("✅ Normalized AnalysisResults:", normalizedAnalysis);
+
+    setAnalysisResults(normalizedAnalysis);
   } catch (err) {
-    console.error("Error handling image upload:", err);
-    setError(err);
-    return [];
+    console.error("❌ handleUploadAndAnalyze error:", err);
+    setError(err.message || "Something went wrong");
   } finally {
     setLoading(false);
   }
