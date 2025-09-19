@@ -20,7 +20,7 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
     setLoading(true);
 
     let convertedImage = imageFile;
-    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
+    if (imageFile && [!"image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
       convertedImage = await heic2any({ blob: imageFile });
     }
 
