@@ -3,7 +3,6 @@ import heic2any from "heic2any";
 // 🔹 Safely modify and normalize product data
 export const modifyData = (products = []) => {
   if (!Array.isArray(products)) return [];
-
   return products.map((product) => ({
     name: product?.product_title,
     description: product?.product_description,
@@ -19,58 +18,33 @@ export const modifyData = (products = []) => {
 };
 
 // 🔹 Extract the best item name from Vision API response
-export const extractItemNameFromResponse = (response, setProductName) => {
-  let extractedText = response?.data?.responses?.[0]?.fullTextAnnotation?.text;
-
-  // fallback to textAnnotations if fullTextAnnotation is empty
-  if (!extractedText) {
-    const textAnnotations = response?.data?.responses?.[0]?.textAnnotations;
-    if (textAnnotations?.length > 0) {
-      extractedText = textAnnotations.map((a) => a.description).join(" ");
-    }
+export const extractItemNameFromResponse = (visionApiResponse, setProductName) => {
+  const response = visionApiResponse;
+  
+  // Try webDetection best guess first
+  const webGuess = response?.responses?.[0]?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
+  if (webGuess) {
+    setProductName(webGuess);
+    return webGuess;
   }
 
-  // fallback to logos if no text
-  if (!extractedText) {
-    const logos = response?.data?.responses?.[0]?.logoAnnotations;
-    if (logos?.length > 0) {
-      extractedText = logos[0].description;
-    }
+  // Fallback to first labelAnnotation
+  const labelAnnotation = response?.responses?.[0]?.labelAnnotations?.[0]?.description?.trim();
+  if (labelAnnotation) {
+    setProductName(labelAnnotation);
+    return labelAnnotation;
   }
 
-  // final fallback
-  if (!extractedText) extractedText = "Unknown Item";
-
-  setProductName(extractedText);
-  return extractedText;
-};
-
-// 🔹 Fetch product data through Netlify function
-const fetchData = async (itemName, setLoading, setError) => {
-  try {
-    setLoading(true);
-    const apiResponse = await fetch(
-      `/.netlify/functions/fetchProducts?q=${encodeURIComponent(itemName)}`
-    );
-    const data = await apiResponse.json();
-    return data ?? { data: [] };
-  } catch (error) {
-    console.error("Error fetching product data:", error);
-    setError(error);
-    return { data: [] };
-  } finally {
-    setLoading(false);
-  }
+  // Final fallback
+  setProductName("Unknown item");
+  return "Unknown item";
 };
 
 // 🔹 Main image upload handler
-export const handleImageUpload = async (
-  imageFile,
-  setProductName,
-  setError,
-  setLoading
-) => {
+export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
+    setLoading(true);
+
     // Convert HEIC or unsupported formats
     let convertedImage = imageFile;
     if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
@@ -79,16 +53,16 @@ export const handleImageUpload = async (
 
     // Convert image to Base64
     const reader = new FileReader();
-    const visionApiResponse = await new Promise((resolve, reject) => {
+    const analyzeResponse = await new Promise((resolve, reject) => {
       reader.onload = async () => {
         try {
           if (!reader.result) return reject("Failed to read image");
-          const imageContent = reader.result.split(",")[1];
+          const imageBase64 = reader.result.split(",")[1];
 
-          // Call Netlify function for image analysis
+          // Call Netlify function for Vision + RapidAPI
           const response = await fetch("/.netlify/functions/analyzeImage", {
             method: "POST",
-            body: JSON.stringify({ imageBase64: imageContent }),
+            body: JSON.stringify({ imageBase64 }),
           });
           const data = await response.json();
           resolve(data);
@@ -100,19 +74,21 @@ export const handleImageUpload = async (
       reader.readAsDataURL(convertedImage);
     });
 
-    // Extract the best item name
-    const itemName = extractItemNameFromResponse(
-      { data: { responses: [visionApiResponse] } },
-      setProductName
-    );
+    // Extract item name from Vision API response
+    const itemName = extractItemNameFromResponse(analyzeResponse, setProductName);
 
-    // Call RapidAPI via Netlify function
-    const productsData = await fetchData(itemName, setLoading, setError);
+    if (!analyzeResponse.data || analyzeResponse.data.length === 0) {
+      setError("No products found for this item.");
+      return [];
+    }
 
-    return modifyData(productsData.data);
+    // Shape the product data for the frontend
+    return modifyData(analyzeResponse.data);
   } catch (err) {
     console.error("Error handling image upload:", err);
     setError(err);
     return [];
+  } finally {
+    setLoading(false);
   }
 };
