@@ -75,7 +75,8 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
           }
 
           const data = await response.json();
-          resolve(data);
+          rconsole.log("Raw API response:", data);
+          return data;
         } catch (err) {
           reject(err);
         }
