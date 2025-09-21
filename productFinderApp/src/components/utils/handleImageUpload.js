@@ -1,65 +1,69 @@
 import heic2any from "heic2any";
-import { modifyData, extractItemNameFromResponse } from "./utils"; // adjust import
+import { modifyData, extractItemNameFromResponse } from "./utils"; // adjust import if needed
 
 export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
-  try {
-    setLoading(true);
+  setLoading(true);
+  setError(null);
 
-    if (!imageFile) throw new Error("No image file provided");
+  try {
+    console.log("Starting handleImageUpload");
 
     // Convert HEIC or unsupported formats
     let convertedImage = imageFile;
     if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
-      const heicResult = await heic2any({ blob: imageFile });
-      convertedImage = Array.isArray(heicResult) ? heicResult[0] : heicResult;
+      console.log("Converting image from HEIC/other format...");
+      convertedImage = await heic2any({ blob: imageFile });
+      console.log("Conversion done:", convertedImage);
     }
 
-    console.log("Converted image for FileReader:", convertedImage);
-
-    // Convert image to Base64 using FileReader
-    const analyzeResponse = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = async () => {
-        try {
-          if (!reader.result) return reject(new Error("Failed to read image"));
-          const imageBase64 = reader.result.split(",")[1];
-
-          // Call Netlify function
-          const response = await fetch("/.netlify/functions/analyzeImage", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64 }),
-          });
-
-          if (!response.ok) {
-            const text = await response.text();
-            return reject(new Error(`Function error: ${text}`));
-          }
-
-          const data = await response.json();
-          console.log("Raw API response:", data);
-          resolve(data);
-        } catch (err) {
-          reject(err);
-        }
+    // Convert to Base64
+    const reader = new FileReader();
+    const imageBase64 = await new Promise((resolve, reject) => {
+      reader.onload = () => {
+        if (!reader.result) return reject(new Error("Failed to read image"));
+        const base64 = reader.result.split(",")[1];
+        console.log("Image converted to Base64");
+        resolve(base64);
       };
-
-      reader.onerror = () => reject(new Error("Failed to read image file"));
+      reader.onerror = () => reject(new Error("FileReader failed"));
       reader.readAsDataURL(convertedImage);
     });
 
-    // Extract item name
-    extractItemNameFromResponse(analyzeResponse, setProductName);
+    console.log("Base64 ready, sending to backend...");
 
-    if (!analyzeResponse.data || analyzeResponse.data.length === 0) {
+    // Call Netlify function
+    const response = await fetch("/.netlify/functions/analyzeImage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64 }),
+    });
+
+    console.log("Fetch completed, status:", response.status);
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Function error: ${text}`);
+    }
+
+    const data = await response.json();
+    console.log("Raw API response:", data);
+
+    // Extract item name
+    const itemName = extractItemNameFromResponse(data, setProductName);
+    console.log("Item name extracted:", itemName);
+
+    if (!data.data || data.data.length === 0) {
       setError("No products found for this item.");
+      console.log("No products returned");
       return [];
     }
 
-    return modifyData(analyzeResponse.data);
+    const products = modifyData(data.data);
+    console.log("Products returned:", products);
+    return products;
+
   } catch (err) {
-    console.error("Error handling image upload:", err);
+    console.error("Error in handleImageUpload:", err);
     setError(err.message || String(err));
     return [];
   } finally {
