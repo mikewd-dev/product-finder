@@ -1,5 +1,11 @@
 import { handleImageUpload } from "./imageHandlingAndApiCall";
 
+// 🔹 Dev + prod safe Netlify functions URL
+const NETLIFY_FUNCTIONS_URL = import.meta.env.VITE_NETLIFY_FUNCTIONS_URL 
+  || (window.location.hostname.includes("github.dev")
+      ? `https://${window.location.hostname.replace(/:\d+/, '-8888')}/.netlify/functions`
+      : "/.netlify/functions");
+
 export const handleUploadAndAnalyze = async (
   imageFile,
   setProductName,
@@ -12,7 +18,7 @@ export const handleUploadAndAnalyze = async (
     setLoading(true);
     setError(null);
 
-    // 1️⃣ Fetch products (Vision + RapidAPI flow)
+    // 1️⃣ Fetch products (Vision + RapidAPI)
     const products = await handleImageUpload(
       imageFile,
       setProductName,
@@ -37,23 +43,25 @@ export const handleUploadAndAnalyze = async (
 
     setProductData(cleanedProducts);
 
-    // 2️⃣ Call Netlify function for Vision Web Detection (like old code)
+    // 2️⃣ Call Netlify function for Vision Web Detection
     const reader = new FileReader();
     reader.onloadend = async () => {
       try {
+        if (!reader.result) return;
         const base64Image = reader.result.split(",")[1];
 
         const response = await fetch("/.netlify/functions/analyzeImage", {
           method: "POST",
-          body: JSON.stringify({
-            imageBase64: base64Image,
-            features: [{ type: "WEB_DETECTION" }],
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64Image, features: [{ type: "WEB_DETECTION" }] }),
         });
 
-        const responseData = await response.json();
-        console.log("Vision Web Detection:", responseData);
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Function error: ${text}`);
+        }
 
+        const responseData = await response.json();
         const webDetection = responseData.responses?.[0]?.webDetection || {};
         setAnalysisResults(webDetection);
       } catch (err) {
@@ -63,8 +71,9 @@ export const handleUploadAndAnalyze = async (
     };
 
     reader.readAsDataURL(imageFile);
+
   } catch (err) {
-    console.error("❌ handleUploadAndAnalyze error:", err);
+    console.error("handleUploadAndAnalyze error:", err);
     setError(err.message || "Something went wrong");
   } finally {
     setLoading(false);
