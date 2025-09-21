@@ -1,4 +1,5 @@
 function AnalysisResults({ analysisResults }) {
+  console.log("Analysis results:", analysisResults);
   return (
     <div>
       {analysisResults && (
