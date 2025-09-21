@@ -17,7 +17,7 @@ export const handler = async (event) => {
   try {
     const { imageBase64 } = JSON.parse(event.body);
 
-    //Call Google Vision API
+    // Call Google Vision API
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API}`,
       {
@@ -46,11 +46,11 @@ export const handler = async (event) => {
     if (!itemName || itemName === "Unknown item") {
       return {
         statusCode: 200,
-        body: JSON.stringify({ data: [], itemName }),
+        body: JSON.stringify({ itemName, data: [] }),
       };
     }
 
-    //Call RapidAPI using extracted item name
+    // Call RapidAPI with extracted item name
     const rapidApiUrl = new URL(`https://${process.env.RAPIDAPI_HOST}/search`);
     rapidApiUrl.search = new URLSearchParams({
       q: itemName,
@@ -73,7 +73,17 @@ export const handler = async (event) => {
       throw new Error(`RapidAPI request failed with status ${rapidResponse.status}`);
     }
 
-    const products = await rapidResponse.json();
+    const productsResponse = await rapidResponse.json();
+
+    // Debug log so you can see exact RapidAPI structure
+    console.log("RapidAPI raw response:", JSON.stringify(productsResponse, null, 2));
+
+    // Normalize: make sure `data` is always an array
+    const products =
+      productsResponse?.data?.products ||
+      productsResponse?.products ||
+      productsResponse?.items ||
+      [];
 
     return {
       statusCode: 200,
