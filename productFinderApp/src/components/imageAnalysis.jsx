@@ -48,6 +48,7 @@ const NETLIFY_FUNCTIONS_URL = import.meta.env.VITE_NETLIFY_FUNCTIONS_URL;
       setProductData(products);
 
       // Also set analysisResults from the same data
+      console.log("Products returned:", products);
       if (products.length > 0) {
         const firstProduct = products[0];
         setAnalysisResults(firstProduct.analysisResults || {}); // optional, depending on structure
