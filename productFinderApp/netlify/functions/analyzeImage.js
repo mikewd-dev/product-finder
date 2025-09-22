@@ -1,14 +1,46 @@
 import fetch from "node-fetch";
 
-// Helper to extract item name from Google Vision response
+
 const extractItemName = (visionResponse) => {
   if (!visionResponse) return "Unknown item";
+  const response = visionResponse.responses?.[0];
+  if (!response) return "Unknown item";
 
-  const bestGuess = visionResponse?.responses?.[0]?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
-  if (bestGuess) return bestGuess;
+  const webDetection = response.webDetection;
+  const labels = webDetection?.bestGuessLabels || [];
+  const visuallySimilarImages = webDetection?.visuallySimilarImages || [];
 
-  const label = visionResponse?.responses?.[0]?.labelAnnotations?.[0]?.description?.trim();
-  if (label) return label;
+  const productLikeLabels = labels
+    .map((l) => l.label.trim())
+    .filter((label) =>
+      !["object", "thing", "artifact", "material"].includes(label.toLowerCase())
+    );
+
+  if (productLikeLabels.length > 0) return productLikeLabels[0];
+
+  for (const img of visuallySimilarImages) {
+    try {
+      const urlParts = img.url.split("/");
+      const filename = urlParts[urlParts.length - 1].toLowerCase();
+      const nameMatch = filename.match(/[a-z0-9-]+/gi);
+      if (nameMatch && nameMatch.length > 0) {
+        return nameMatch.join(" ");
+      }
+    } catch (err) {
+      continue;
+    }
+  }
+
+
+  const labelAnnotations = response.labelAnnotations || [];
+  if (labelAnnotations.length > 0) {
+    labelAnnotations.sort((a, b) => (b.score || 0) - (a.score || 0));
+    const topLabel = labelAnnotations[0].description.trim();
+    if (!["object", "thing", "artifact", "material"].includes(topLabel.toLowerCase())) {
+      return topLabel;
+    }
+  }
+
 
   return "Unknown item";
 };
@@ -17,7 +49,7 @@ export const handler = async (event) => {
   try {
     const { imageBase64 } = JSON.parse(event.body);
 
-    // Call Google Vision API
+
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API}`,
       {
@@ -42,6 +74,7 @@ export const handler = async (event) => {
     );
 
     const visionData = await visionResponse.json();
+
     const itemName = extractItemName(visionData);
 
     if (!itemName || itemName === "Unknown item") {
@@ -51,7 +84,6 @@ export const handler = async (event) => {
       };
     }
 
-    // Call RapidAPI with extracted item name
     const rapidApiUrl = new URL(`https://${process.env.RAPIDAPI_HOST}/search`);
     rapidApiUrl.search = new URLSearchParams({
       q: itemName,
@@ -76,10 +108,6 @@ export const handler = async (event) => {
 
     const productsResponse = await rapidResponse.json();
 
-    // Debug log so you can see exact RapidAPI structure
-    console.log("RapidAPI raw response:", JSON.stringify(productsResponse, null, 2));
-
-    // Normalize: make sure `data` is always an array
     const products =
       productsResponse?.data?.products ||
       productsResponse?.products ||
