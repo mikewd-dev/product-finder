@@ -1,82 +1,69 @@
-import fetch from "node-fetch";
+const vision = require('@google-cloud/vision');
 
-// Generic helper to extract multiple plausible product names
-const extractCandidateNames = (visionResponse) => {
-  if (!visionResponse) return [];
+// Instantiate the Vision client
+const client = new vision.ImageAnnotatorClient();
 
-  const response = visionResponse.responses?.[0];
+const extractCandidateNames = (response) => {
   if (!response) return [];
 
   const candidates = [];
 
+  const webDetection = response.webDetection;
+  const labels = webDetection?.bestGuessLabels || [];
+  const visuallySimilarImages = webDetection?.visuallySimilarImages || [];
+  const labelAnnotations = response.labelAnnotations || [];
+
   // 1️⃣ WebDetection bestGuessLabels
-  const webLabels = response.webDetection?.bestGuessLabels || [];
-  webLabels.forEach(l => {
+  labels.forEach(l => {
     const label = l.label.trim();
     if (!["object","thing","artifact","material"].includes(label.toLowerCase())) {
-      candidates.push({ name: label, source: "webDetection" });
+      candidates.push(label);
     }
   });
 
   // 2️⃣ LabelAnnotations sorted by score
-  const labelAnnotations = response.labelAnnotations || [];
   labelAnnotations
     .sort((a,b) => (b.score || 0) - (a.score || 0))
     .forEach(l => {
       const label = l.description.trim();
       if (!["object","thing","artifact","material"].includes(label.toLowerCase())) {
-        candidates.push({ name: label, source: "labelAnnotation", score: l.score });
+        candidates.push(label);
       }
     });
 
   // 3️⃣ VisuallySimilarImages heuristics
-  const visuallySimilarImages = response.webDetection?.visuallySimilarImages || [];
   visuallySimilarImages.forEach(img => {
     try {
       const urlParts = img.url.split("/");
       const filename = urlParts[urlParts.length-1].toLowerCase();
       const match = filename.match(/[a-z0-9-]+/gi);
       if (match && match.length > 0) {
-        candidates.push({ name: match.join(" "), source: "visuallySimilarImage" });
+        candidates.push(match.join(" "));
       }
     } catch (err) {}
   });
 
-  return candidates;
+  // Remove duplicates
+  return [...new Set(candidates)];
 };
 
-export const handler = async (event) => {
+exports.handler = async (event) => {
   try {
     const { imageBase64 } = JSON.parse(event.body);
 
-    // Call Google Vision API
-    const visionResponse = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: { content: imageBase64 },
-              features: [
-                { type: "PRODUCT_SEARCH", maxResults: 10 },
-                { type: "LABEL_DETECTION", maxResults: 5 },
-                { type: "LOGO_DETECTION", maxResults: 5 },
-                { type: "TEXT_DETECTION", maxResults: 5 },
-                { type: "WEB_DETECTION", maxResults: 5 },
-                { type: "OBJECT_LOCALIZATION", maxResults: 5 }
-              ],
-            },
-          ],
-        }),
-      }
-    );
+    // Call Vision API
+    const [visionResult] = await client.annotateImage({
+      image: { content: imageBase64 },
+      features: [
+        { type: 'PRODUCT_SEARCH', maxResults: 10 },
+        { type: 'LABEL_DETECTION', maxResults: 5 },
+        { type: 'WEB_DETECTION', maxResults: 5 },
+        { type: 'OBJECT_LOCALIZATION', maxResults: 5 }
+      ]
+    });
 
-    const visionData = await visionResponse.json();
-
-    // Extract candidate names
-    const candidates = extractCandidateNames(visionData);
+    const response = visionResult.responses?.[0];
+    const candidates = extractCandidateNames(response);
 
     if (!candidates || candidates.length === 0) {
       return {
@@ -92,7 +79,7 @@ export const handler = async (event) => {
     for (const candidate of candidates) {
       const rapidApiUrl = new URL(`https://${process.env.RAPIDAPI_HOST}/search`);
       rapidApiUrl.search = new URLSearchParams({
-        q: candidate.name,
+        q: candidate,
         country: "gb",
         language: "en",
         limit: "10",
@@ -116,7 +103,7 @@ export const handler = async (event) => {
         [];
 
       if (products.length > 0) {
-        itemName = candidate.name;
+        itemName = candidate;
         break;
       }
     }
@@ -127,7 +114,7 @@ export const handler = async (event) => {
     };
 
   } catch (err) {
-    console.error("Error in analyzeImage handler:", err.message);
+    console.error("Error in handler:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
