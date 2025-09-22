@@ -23,7 +23,7 @@ function AnalysisResults({ analysisResults }) {
           <div className="visually-similar">
           <h2>Visually Similar Images:</h2>
           <ul>
-            {banalysisResults.visuallySimilarImages.map((image, index) => (
+            {analysisResults.visuallySimilarImages.map((image, index) => (
               <li key={index}>
                 <img src={image.url} alt={`Matching Image ${index + 1}`} />
                 <p><a href={image.url} target="_blank" rel="noopener noreferrer">View Image</a></p>
