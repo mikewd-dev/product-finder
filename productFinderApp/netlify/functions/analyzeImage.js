@@ -1,55 +1,55 @@
 import fetch from "node-fetch";
 
+// Generic helper to extract multiple plausible product names
+const extractCandidateNames = (visionResponse) => {
+  if (!visionResponse) return [];
 
-const extractItemName = (visionResponse) => {
-  if (!visionResponse) return "Unknown item";
   const response = visionResponse.responses?.[0];
-  if (!response) return "Unknown item";
+  if (!response) return [];
 
-  const webDetection = response.webDetection;
-  const labels = webDetection?.bestGuessLabels || [];
-  const visuallySimilarImages = webDetection?.visuallySimilarImages || [];
+  const candidates = [];
 
-  const productLikeLabels = labels
-    .map((l) => l.label.trim())
-    .filter((label) =>
-      !["object", "thing", "artifact", "material"].includes(label.toLowerCase())
-    );
+  // 1️⃣ WebDetection bestGuessLabels
+  const webLabels = response.webDetection?.bestGuessLabels || [];
+  webLabels.forEach(l => {
+    const label = l.label.trim();
+    if (!["object","thing","artifact","material"].includes(label.toLowerCase())) {
+      candidates.push({ name: label, source: "webDetection" });
+    }
+  });
 
-  if (productLikeLabels.length > 0) return productLikeLabels[0];
+  // 2️⃣ LabelAnnotations sorted by score
+  const labelAnnotations = response.labelAnnotations || [];
+  labelAnnotations
+    .sort((a,b) => (b.score || 0) - (a.score || 0))
+    .forEach(l => {
+      const label = l.description.trim();
+      if (!["object","thing","artifact","material"].includes(label.toLowerCase())) {
+        candidates.push({ name: label, source: "labelAnnotation", score: l.score });
+      }
+    });
 
-  for (const img of visuallySimilarImages) {
+  // 3️⃣ VisuallySimilarImages heuristics
+  const visuallySimilarImages = response.webDetection?.visuallySimilarImages || [];
+  visuallySimilarImages.forEach(img => {
     try {
       const urlParts = img.url.split("/");
-      const filename = urlParts[urlParts.length - 1].toLowerCase();
-      const nameMatch = filename.match(/[a-z0-9-]+/gi);
-      if (nameMatch && nameMatch.length > 0) {
-        return nameMatch.join(" ");
+      const filename = urlParts[urlParts.length-1].toLowerCase();
+      const match = filename.match(/[a-z0-9-]+/gi);
+      if (match && match.length > 0) {
+        candidates.push({ name: match.join(" "), source: "visuallySimilarImage" });
       }
-    } catch (err) {
-      continue;
-    }
-  }
+    } catch (err) {}
+  });
 
-
-  const labelAnnotations = response.labelAnnotations || [];
-  if (labelAnnotations.length > 0) {
-    labelAnnotations.sort((a, b) => (b.score || 0) - (a.score || 0));
-    const topLabel = labelAnnotations[0].description.trim();
-    if (!["object", "thing", "artifact", "material"].includes(topLabel.toLowerCase())) {
-      return topLabel;
-    }
-  }
-
-
-  return "Unknown item";
+  return candidates;
 };
 
 export const handler = async (event) => {
   try {
     const { imageBase64 } = JSON.parse(event.body);
 
-
+    // Call Google Vision API
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_VISION_API}`,
       {
@@ -75,49 +75,57 @@ export const handler = async (event) => {
 
     const visionData = await visionResponse.json();
 
-    const itemName = extractItemName(visionData);
+    // Extract candidate names
+    const candidates = extractCandidateNames(visionData);
 
-    if (!itemName || itemName === "Unknown item") {
+    if (!candidates || candidates.length === 0) {
       return {
         statusCode: 200,
-        body: JSON.stringify({ itemName, data: [] }),
+        body: JSON.stringify({ itemName: "Unknown item", data: [] }),
       };
     }
 
-    const rapidApiUrl = new URL(`https://${process.env.RAPIDAPI_HOST}/search`);
-    rapidApiUrl.search = new URLSearchParams({
-      q: itemName,
-      country: "gb",
-      language: "en",
-      limit: "10",
-      sort_by: "LOWEST_PRICE",
-    }).toString();
+    let products = [];
+    let itemName = "Unknown item";
 
-    const rapidResponse = await fetch(rapidApiUrl.toString(), {
-      headers: {
-        "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-        "X-RapidAPI-Host": process.env.RAPIDAPI_HOST,
-      },
-    });
+    // Try RapidAPI search for each candidate until results are found
+    for (const candidate of candidates) {
+      const rapidApiUrl = new URL(`https://${process.env.RAPIDAPI_HOST}/search`);
+      rapidApiUrl.search = new URLSearchParams({
+        q: candidate.name,
+        country: "gb",
+        language: "en",
+        limit: "10",
+        sort_by: "LOWEST_PRICE",
+      }).toString();
 
-    if (!rapidResponse.ok) {
-      const errorText = await rapidResponse.text();
-      console.error("RapidAPI error response:", errorText);
-      throw new Error(`RapidAPI request failed with status ${rapidResponse.status}`);
+      const rapidResponse = await fetch(rapidApiUrl.toString(), {
+        headers: {
+          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+          "X-RapidAPI-Host": process.env.RAPIDAPI_HOST,
+        },
+      });
+
+      if (!rapidResponse.ok) continue;
+
+      const productsResponse = await rapidResponse.json();
+      products =
+        productsResponse?.data?.products ||
+        productsResponse?.products ||
+        productsResponse?.items ||
+        [];
+
+      if (products.length > 0) {
+        itemName = candidate.name;
+        break;
+      }
     }
-
-    const productsResponse = await rapidResponse.json();
-
-    const products =
-      productsResponse?.data?.products ||
-      productsResponse?.products ||
-      productsResponse?.items ||
-      [];
 
     return {
       statusCode: 200,
       body: JSON.stringify({ itemName, data: products }),
     };
+
   } catch (err) {
     console.error("Error in analyzeImage handler:", err.message);
     return {
