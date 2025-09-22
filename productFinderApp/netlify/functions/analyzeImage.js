@@ -50,20 +50,20 @@ export const handler = async (event) => {
   try {
     const { imageBase64 } = JSON.parse(event.body);
 
-    // 1️⃣ Parse service account JSON and fix private_key line breaks
+    
     const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+  
     serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
 
-    // 2️⃣ Write fixed JSON to /tmp
+  
     const tmpPath = path.join("/tmp", "vision-key.json");
     fs.writeFileSync(tmpPath, JSON.stringify(serviceAccount));
 
-    // 3️⃣ Initialize Google Vision client
     const client = new vision.ImageAnnotatorClient({
       keyFilename: tmpPath,
     });
 
-    // 4️⃣ Call Vision API for Product Search, Label Detection, and Web Detection
+    
     const [visionResponse] = await client.annotateImage({
       image: { content: imageBase64 },
       features: [
@@ -82,7 +82,7 @@ export const handler = async (event) => {
       };
     }
 
-    // 5️⃣ Call RapidAPI with extracted item name
+    
     const rapidApiUrl = new URL(
       `https://${process.env.VITE_REACT_APP_RAPIDAPI_HOST}/search`
     );
