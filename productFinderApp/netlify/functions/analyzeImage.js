@@ -98,7 +98,7 @@ export const handler = async (event) => {
         `https://${process.env.VITE_REACT_APP_RAPIDAPI_HOST}/search`
       );
       rapidApiUrl.search = new URLSearchParams({
-        q: name,
+        q,
         country: "gb",
         language: "en",
         limit: "10",
