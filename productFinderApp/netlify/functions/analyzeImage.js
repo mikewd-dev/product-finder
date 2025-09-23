@@ -85,6 +85,8 @@ export const handler = async (event) => {
       ],
     });
 
+    console.log("FULL GOOGLE VISION RESPONSE:", JSON.stringify(visionResponse, null, 2));
+
     const possibleItemNames = extractItemNames(visionResponse.responses?.[0]);
 
     let products = [];
