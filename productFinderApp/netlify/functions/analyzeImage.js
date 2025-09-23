@@ -1,5 +1,5 @@
-import { google } from "googleapis";
 import fetch from "node-fetch";
+import { ImageAnnotatorClient } from "@google-cloud/vision";
 
 // Helper to extract item names from Google Vision response
 const extractItemNames = (visionResponse) => {
@@ -22,6 +22,24 @@ const extractItemNames = (visionResponse) => {
   return [...new Set(names)];
 };
 
+// ---- GOOGLE VISION CLIENT SETUP ----
+let visionClient;
+
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+  // Netlify: JSON stored as env var
+  const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+  visionClient = new ImageAnnotatorClient({ credentials });
+} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  // Local: file path
+  visionClient = new ImageAnnotatorClient({
+    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  });
+} else {
+  throw new Error(
+    "No Google Vision credentials found. Set GOOGLE_APPLICATION_CREDENTIALS_JSON (Netlify) or GOOGLE_APPLICATION_CREDENTIALS (local)."
+  );
+}
+
 export const handler = async (event) => {
   try {
     if (!event.body) {
@@ -33,36 +51,14 @@ export const handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: "No imageBase64 provided" }) };
     }
 
-    // ---- GOOGLE VISION AUTH ----
-    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      throw new Error("Missing GOOGLE_APPLICATION_CREDENTIALS environment variable");
-    }
-
-    let client;
-    try {
-      const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-      const auth = new google.auth.GoogleAuth({
-        credentials,
-        scopes: ["https://www.googleapis.com/auth/cloud-vision"],
-      });
-      client = await auth.getClient();
-    } catch (err) {
-      console.error("Failed to create GoogleAuth client:", err);
-      throw new Error("GoogleAuth client creation failed");
-    }
-
-    const vision = google.vision({ version: "v1", auth: client });
-
     // ---- CALL VISION API ----
-    const [visionResponse] = await vision.images.annotate({
-      requestBody: {
-        requests: [
-          {
-            image: { content: imageBase64 },
-            features: [{ type: "LABEL_DETECTION", maxResults: 5 }],
-          },
-        ],
-      },
+    const [visionResponse] = await visionClient.annotateImage({
+      requests: [
+        {
+          image: { content: imageBase64 },
+          features: [{ type: "LABEL_DETECTION", maxResults: 5 }],
+        },
+      ],
     });
 
     const possibleItemNames = extractItemNames(visionResponse.responses?.[0] || {});
@@ -104,9 +100,6 @@ export const handler = async (event) => {
     };
   } catch (err) {
     console.error("analyzeImage function error:", err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message || "Something went wrong" }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message || "Something went wrong" }) };
   }
 };
