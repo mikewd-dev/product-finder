@@ -110,4 +110,4 @@ export const handler = async (event) => {
     console.error("analyzeImage function error:", err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message || "Something went wrong" }) };
   }
-};v
+};
