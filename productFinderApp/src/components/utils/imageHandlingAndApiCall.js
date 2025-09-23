@@ -45,7 +45,7 @@ const NETLIFY_FUNCTIONS_URL =
   import.meta.env.VITE_NETLIFY_FUNCTIONS_URL || "/.netlify/functions";
 
 // 🔹 Main image upload handler
-export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
+export const handleImage = async (imageFile, setProductName, setError, setLoading) => {
   try {
     setLoading(true);
 
@@ -53,6 +53,8 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
     let convertedImage = imageFile;
     if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
       convertedImage = await heic2any({ blob: imageFile });
+      // heic2any may return an array
+      if (Array.isArray(convertedImage)) convertedImage = convertedImage[0];
     }
 
     // Convert image to Base64
@@ -64,7 +66,7 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
           const imageBase64 = reader.result.split(",")[1];
 
           // Call Netlify function for Vision + RapidAPI
-          const response = await fetch("/.netlify/functions/analyzeImage", {
+          const response = await fetch(`${NETLIFY_FUNCTIONS_URL}/analyzeImage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageBase64 }),
@@ -86,7 +88,7 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
     });
 
     // Extract item name from Vision API response
-    const itemName = extractItemNameFromResponse(analyzeResponse, setProductName);
+    extractItemNameFromResponse(analyzeResponse, setProductName);
 
     if (!analyzeResponse.data || analyzeResponse.data.length === 0) {
       setError("No products found for this item.");
