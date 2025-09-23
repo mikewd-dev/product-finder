@@ -25,10 +25,7 @@ const extractItemNames = (visionResponse) => {
 export const handler = async (event) => {
   try {
     if (!event.body) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "No request body found" }),
-      };
+      return { statusCode: 400, body: JSON.stringify({ error: "No request body found" }) };
     }
 
     const { imageBase64 } = JSON.parse(event.body);
@@ -36,15 +33,27 @@ export const handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: "No imageBase64 provided" }) };
     }
 
-    // ---- Google Vision API ----
-    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/cloud-vision"],
-    });
-    const client = await auth.getClient();
+    // ---- GOOGLE VISION AUTH ----
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      throw new Error("Missing GOOGLE_APPLICATION_CREDENTIALS environment variable");
+    }
+
+    let client;
+    try {
+      const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+      const auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ["https://www.googleapis.com/auth/cloud-vision"],
+      });
+      client = await auth.getClient();
+    } catch (err) {
+      console.error("Failed to create GoogleAuth client:", err);
+      throw new Error("GoogleAuth client creation failed");
+    }
+
     const vision = google.vision({ version: "v1", auth: client });
 
+    // ---- CALL VISION API ----
     const [visionResponse] = await vision.images.annotate({
       requestBody: {
         requests: [
@@ -60,46 +69,38 @@ export const handler = async (event) => {
     const itemName = possibleItemNames[0] || "Unknown item";
     console.log("Item name from Vision API:", itemName);
 
-    // ---- RapidAPI Product Search ----
+    // ---- RAPIDAPI PRODUCTS ----
     let products = [];
-    if (itemName !== "Unknown item") {
-      const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
-      const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
+    const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
+    const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
 
-      if (rapidKey && rapidHost) {
-        const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(
-          itemName
-        )}`;
+    if (itemName !== "Unknown item" && rapidKey && rapidHost) {
+      try {
+        const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
+        const rapidRes = await fetch(rapidApiUrl, {
+          headers: {
+            "X-RapidAPI-Key": rapidKey,
+            "X-RapidAPI-Host": rapidHost,
+          },
+        });
 
-        try {
-          const rapidRes = await fetch(rapidApiUrl, {
-            headers: {
-              "X-RapidAPI-Key": rapidKey,
-              "X-RapidAPI-Host": rapidHost,
-            },
-          });
-
-          if (rapidRes.ok) {
-            const rapidData = await rapidRes.json();
-            products = rapidData.products || [];
-          } else {
-            const text = await rapidRes.text();
-            console.warn("RapidAPI error:", text);
-          }
-        } catch (err) {
-          console.error("Error fetching RapidAPI:", err);
+        if (rapidRes.ok) {
+          const rapidData = await rapidRes.json();
+          products = rapidData.products || [];
+        } else {
+          const text = await rapidRes.text();
+          console.warn("RapidAPI error:", text);
         }
-      } else {
-        console.warn("RapidAPI credentials missing, skipping product fetch");
+      } catch (err) {
+        console.error("Error fetching RapidAPI:", err);
       }
+    } else {
+      console.warn("Skipping RapidAPI fetch (missing credentials or unknown item)");
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        itemName,
-        products,
-      }),
+      body: JSON.stringify({ itemName, products }),
     };
   } catch (err) {
     console.error("analyzeImage function error:", err);
