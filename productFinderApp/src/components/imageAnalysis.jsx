@@ -38,7 +38,7 @@ const NETLIFY_FUNCTIONS_URL = import.meta.env.VITE_NETLIFY_FUNCTIONS_URL;
     setError(null);
 
     try {
-      const products = await handleImageUpload(
+      const products = await handleImage(
         selectedImage,
         setProductName,
         setError,

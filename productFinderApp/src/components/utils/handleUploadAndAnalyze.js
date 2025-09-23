@@ -19,7 +19,7 @@ export const handleUploadAndAnalyze = async (
     setError(null);
 
     // 1️⃣ Fetch products (Vision + RapidAPI)
-    const products = await handleImageUpload(
+    const products = await handleImage(
       imageFile,
       setProductName,
       setError,
