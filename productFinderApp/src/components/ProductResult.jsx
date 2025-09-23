@@ -7,7 +7,7 @@ import { ItemTypes } from "./ItemTypes";
 import heic2any from "heic2any";
 import { imageFileResizer } from "react-image-file-resizer";
 import ProductCarousel from "./ProductCarousel";
-import {handleImageUpload} from "./utils/imageHandlingAndApiCall"
+import {handleImage} from "./utils/imageHandlingAndApiCall"
 import { handleUploadAndAnalyze } from "./utils/handleUploadAndAnalyze";
 import AnalysisResults from "./AnalysisResultsDisplay";
 

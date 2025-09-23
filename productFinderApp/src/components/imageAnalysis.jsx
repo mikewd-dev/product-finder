@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../../src/styles/ImageAnalysis.css";
 import ProductCarousel from "./ProductCarousel";
 import ProductGrid from "./ProductGrid";
-import { handleImageUpload } from "./utils/imageHandlingAndApiCall";
+import { handleImage } from "./utils/imageHandlingAndApiCall";
 import AnalysisResults from "./AnalysisResultsDisplay";
 
 
