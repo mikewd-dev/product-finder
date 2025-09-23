@@ -50,12 +50,13 @@ export const handler = async (event) => {
       const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
       const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
       const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
-      const rapidResponse = await fetch(rapidApiUrl.toString(), {
-  headers: {
-    "X-RapidAPI-Key": process.env.VITE_REACT_APP_RAPIDAPI_KEY,
-    "X-RapidAPI-Host": process.env.VITE_REACT_APP_RAPIDAPI_HOST,
-  },
-});
+
+      const rapidResponse = await fetch(rapidApiUrl, {
+        headers: {
+          "X-RapidAPI-Key": process.env.VITE_REACT_APP_RAPIDAPI_KEY,
+          "X-RapidAPI-Host": process.env.VITE_REACT_APP_RAPIDAPI_HOST,
+        },
+      });
 
       const rapidData = await rapidResponse.json();
       products = rapidData.products || [];
