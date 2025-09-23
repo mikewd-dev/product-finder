@@ -1,107 +1,60 @@
 import heic2any from "heic2any";
-import { modifyData, extractItemNameFromResponse } from "./utils"; // adjust path if needed
+import { modifyData } from "./imageHandlingAndApiCall";
 
-export const handleImageUpload = async (
-  imageFile,
-  setProductName,
-  setError,
-  setLoading
-) => {
-  setLoading(true);
-  setError(null);
-
+export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
-    console.log("🔹 Starting handleImageUpload");
-    console.log("Incoming file:", imageFile);
-    console.log("File type:", imageFile?.type);
+    setLoading(true);
 
-    // ✅ Convert HEIC if needed
+    // 1️⃣ Convert HEIC or unsupported formats
     let convertedImage = imageFile;
-    if (
-      imageFile &&
-      !["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)
-    ) {
-      console.log("Converting from HEIC/other format...");
+    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
       convertedImage = await heic2any({ blob: imageFile });
-      console.log("Conversion done:", convertedImage);
     }
 
-    //Read as Base64 (safe fallback using ArrayBuffer)
-    const imageBase64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
+    // 2️⃣ Convert to Base64
+    const reader = new FileReader();
+    const analyzeResponse = await new Promise((resolve, reject) => {
+      reader.onload = async () => {
+        try {
+          if (!reader.result) return reject(new Error("Failed to read image"));
+          const imageBase64 = reader.result.split(",")[1];
 
-      reader.onload = () => {
-        console.log("FileReader onload triggered");
+          // 3️⃣ Call Netlify function (Vision + RapidAPI)
+          const response = await fetch("/.netlify/functions/analyzeImage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64 }),
+          });
 
-        if (typeof reader.result === "string") {
-          // readAsDataURL case
-          const base64 = reader.result.split(",")[1];
-          console.log("Base64 extracted from DataURL");
-          resolve(base64);
-        } else if (reader.result instanceof ArrayBuffer) {
-          // readAsArrayBuffer fallback
-          const base64 = btoa(
-            new Uint8Array(reader.result).reduce(
-              (data, byte) => data + String.fromCharCode(byte),
-              ""
-            )
-          );
-          console.log("Base64 extracted from ArrayBuffer");
-          resolve(base64);
-        } else {
-          reject(new Error("Unexpected FileReader result"));
+          if (!response.ok) {
+            const text = await response.text();
+            return reject(new Error(`Function error: ${text}`));
+          }
+
+          const data = await response.json();
+          resolve(data);
+        } catch (err) {
+          reject(err);
         }
       };
-
-      reader.onerror = (err) => {
-        console.error("FileReader error:", err);
-        reject(new Error("Failed to read image file"));
-      };
-
-      try {
-        console.log("🔹 Reading file as DataURL...");
-        reader.readAsDataURL(convertedImage);
-      } catch (err) {
-        console.warn("readAsDataURL failed, trying ArrayBuffer...");
-        reader.readAsArrayBuffer(convertedImage);
-      }
+      reader.onerror = () => reject(new Error("Failed to read image file"));
+      reader.readAsDataURL(convertedImage);
     });
 
-    console.log("Base64 ready, sending to backend...");
+    // 4️⃣ Use itemName from Netlify function (RapidAPI result)
+    const itemName = analyzeResponse.itemName || "Unknown item";
+    setProductName(itemName);
 
-    // ✅ Call Netlify function
-    const response = await fetch("/.netlify/functions/analyzeImage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageBase64 }),
-    });
-
-    console.log("🔹 Fetch completed, status:", response.status);
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Function error: ${text}`);
-    }
-
-    const data = await response.json();
-    console.log("Raw API response:", data);
-
-    //Extract item name
-    const itemName = extractItemNameFromResponse(data, setProductName);
-    console.log("🔹 Item name extracted:", itemName);
-
-    // Normalize product data
-    if (!data.data || data.data.length === 0) {
+    if (!analyzeResponse.data || analyzeResponse.data.length === 0) {
       setError("No products found for this item.");
-      console.log("No products returned");
       return [];
     }
 
-    const products = modifyData(data.data);
-    console.log("Products returned:", products);
-    return products;
+    // 5️⃣ Shape products for frontend
+    return modifyData(analyzeResponse.data);
+
   } catch (err) {
-    console.error("Error in handleImageUpload:", err);
+    console.error("Error handling image upload:", err);
     setError(err.message || String(err));
     return [];
   } finally {
