@@ -1,100 +1,80 @@
-import fs from "fs";
-import path from "path";
-import vision from "@google-cloud/vision";
 import fetch from "node-fetch";
 
-// 🔹 Extract possible item names from Vision API response
-const extractItemNames = (response) => {
-  if (!response) return [];
+const extractItemNames = (visionResponse) => {
+  if (!visionResponse) return [];
+
   const names = [];
 
-  // Web detection best guess
-  const bestGuess = response.webDetection?.bestGuessLabels?.[0]?.label?.trim();
-  if (bestGuess) names.push(bestGuess);
+  // 1️⃣ Use best guess labels from webDetection first
+  if (visionResponse.webDetection?.bestGuessLabels?.length) {
+    visionResponse.webDetection.bestGuessLabels.forEach((labelObj) => {
+      if (labelObj.label) names.push(labelObj.label.trim());
+    });
+  }
 
-  // Label annotations fallback
-  const labelAnnotation = response.labelAnnotations?.[0]?.description?.trim();
-  if (labelAnnotation) names.push(labelAnnotation);
+  // 2️⃣ Fallback to labelAnnotations if no best guesses
+  if (names.length === 0 && visionResponse.labelAnnotations?.length) {
+    visionResponse.labelAnnotations.forEach((labelObj) => {
+      if (labelObj.description) names.push(labelObj.description.trim());
+    });
+  }
 
-  return [...new Set(names)];
+  return [...new Set(names)]; // remove duplicates
 };
 
 export const handler = async (event) => {
   try {
-    const { imageBase64 } = JSON.parse(event.body);
-    if (!imageBase64) {
-      return { statusCode: 400, body: JSON.stringify({ error: "No image data provided" }) };
-    }
+    const body = JSON.parse(event.body);
+    const imageBase64 = body.imageBase64;
 
-    // 🔹 Initialize Google Vision client with service account
-    const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
-
-    const tmpPath = path.join("/tmp", "vision-key.json");
-    fs.writeFileSync(tmpPath, JSON.stringify(serviceAccount));
-
-    const client = new vision.ImageAnnotatorClient({ keyFilename: tmpPath });
-
-    // 🔹 Call Vision API
-    const [visionResponse] = await client.annotateImage({
-      image: { content: imageBase64 },
-      features: [
-        { type: "WEB_DETECTION", maxResults: 5 },
-        { type: "LABEL_DETECTION", maxResults: 5 },
-      ],
+    // Call Google Vision API
+    const visionRes = await fetch("YOUR_GOOGLE_VISION_FUNCTION_URL", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageBase64 }),
     });
 
-    console.log("Google Vision response:", JSON.stringify(visionResponse, null, 2));
+    const visionData = await visionRes.json();
+    console.log("Google Vision response:", visionData);
 
-    const possibleItemNames = extractItemNames(visionResponse.responses?.[0]);
+    // Extract possible item names
+    const possibleItemNames = extractItemNames(visionData.responses?.[0] || {});
     console.log("possibleItemNames from Vision API:", possibleItemNames);
 
-    // 🔹 Call RapidAPI using correct server-side env vars
+    const itemName = possibleItemNames[0] || "Unknown item";
+
+    // Call RapidAPI only if we have an item name
     let products = [];
-    let itemNameUsed = "Unknown item";
+    if (itemName !== "Unknown item") {
+      const rapidRes = await fetch(
+        `https://real-time-product-search.p.rapidapi.com/search?query=${encodeURIComponent(itemName)}`,
+        {
+          method: "GET",
+          headers: {
+            "X-RapidAPI-Key": process.env.VITE_REACT_APP_RAPIDAPI_KEY,
+            "X-RapidAPI-Host": process.env.VITE_REACT_APP_RAPIDAPI_HOST,
+          },
+        }
+      );
 
-    for (const name of possibleItemNames) {
-      console.log("Querying RapidAPI with:", name);
-
-      const rapidApiUrl = new URL(`https://${process.env.RAPIDAPI_HOST}/search`);
-      rapidApiUrl.search = new URLSearchParams({
-        q: name,
-        country: "gb",
-        language: "en",
-        limit: "10",
-        sort_by: "LOWEST_PRICE",
-      }).toString();
-
-      const rapidResponse = await fetch(rapidApiUrl.toString(), {
-        headers: {
-          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-          "X-RapidAPI-Host": process.env.RAPIDAPI_HOST,
-        },
-      });
-
-      if (!rapidResponse.ok) {
-        console.log("RapidAPI request failed:", rapidResponse.status, rapidResponse.statusText);
-        continue;
-      }
-
-      const json = await rapidResponse.json();
-      products = json?.data?.products || json?.products || json?.items || [];
-
-      if (products.length > 0) {
-        itemNameUsed = name;
-        break;
-      }
+      const rapidData = await rapidRes.json();
+      products = rapidData.products || [];
     }
 
     console.log("Final products array:", products);
-    console.log("Item name used:", itemNameUsed);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ itemName: itemNameUsed, data: products }),
+      body: JSON.stringify({
+        itemName,
+        products,
+      }),
     };
-  } catch (error) {
-    console.error("Serverless function error:", error);
-    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+  } catch (err) {
+    console.error(err);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Something went wrong" }),
+    };
   }
 };
