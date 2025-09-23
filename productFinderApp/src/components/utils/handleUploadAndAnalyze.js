@@ -1,4 +1,4 @@
-import { handleImageUpload } from "./imageHandlingAndApiCall";
+import { handleImage } from "./imageHandlingAndApiCall";
 
 // 🔹 Dev + prod safe Netlify functions URL
 const NETLIFY_FUNCTIONS_URL = import.meta.env.VITE_NETLIFY_FUNCTIONS_URL 
