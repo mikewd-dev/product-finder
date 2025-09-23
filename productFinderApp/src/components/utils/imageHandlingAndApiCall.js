@@ -64,7 +64,7 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
           const imageBase64 = reader.result.split(",")[1];
 
           // Call Netlify function for Vision + RapidAPI
-          const response = await fetch(".netlify/functions/analyzeImage", {
+          const response = await fetch("/.netlify/functions/analyzeImage", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageBase64 }),
