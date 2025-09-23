@@ -1,6 +1,5 @@
 import fetch from "node-fetch";
 
-// Helper to extract item names from Google Vision response
 const extractItemNames = (visionResponse) => {
   if (!visionResponse) return [];
 
@@ -28,8 +27,20 @@ export const handler = async (event) => {
     const body = JSON.parse(event.body);
     const imageBase64 = body.imageBase64;
 
+    // Check for Google Vision URL
+    const googleVisionUrl = process.env.GOOGLE_VISION_FUNCTION_URL;
+    if (!googleVisionUrl) {
+      console.error("GOOGLE_VISION_FUNCTION_URL is missing!");
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "Server misconfiguration: missing Google Vision URL" }),
+      };
+    }
+
+    console.log("Calling Google Vision function at:", googleVisionUrl);
+
     // Call Google Vision API
-    const visionRes = await fetch(process.env.GOOGLE_VISION_FUNCTION_URL, {
+    const visionRes = await fetch(googleVisionUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: imageBase64 }),
@@ -47,32 +58,36 @@ export const handler = async (event) => {
     // Call RapidAPI only if we have an item name
     let products = [];
     if (itemName !== "Unknown item") {
-      const rapidRes = await fetch(
-        `https://${process.env.VITE_REACT_APP_RAPIDAPI_HOST}/search?query=${encodeURIComponent(itemName)}`,
-        {
-          method: "GET",
-          headers: {
-            "X-RapidAPI-Key": process.env.VITE_REACT_APP_RAPIDAPI_KEY,
-            "X-RapidAPI-Host": process.env.VITE_REACT_APP_RAPIDAPI_HOST,
-          },
-        }
-      );
+      const rapidApiKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
+      const rapidApiHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
 
-      const rapidData = await rapidRes.json();
-      products = rapidData.products || [];
+      if (!rapidApiKey || !rapidApiHost) {
+        console.warn("RapidAPI key or host missing, skipping product search.");
+      } else {
+        const rapidRes = await fetch(
+          `https://real-time-product-search.p.rapidapi.com/search?query=${encodeURIComponent(itemName)}`,
+          {
+            method: "GET",
+            headers: {
+              "X-RapidAPI-Key": rapidApiKey,
+              "X-RapidAPI-Host": rapidApiHost,
+            },
+          }
+        );
+
+        const rapidData = await rapidRes.json();
+        products = rapidData.products || [];
+      }
     }
 
     console.log("Final products array:", products);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        itemName,
-        products,
-      }),
+      body: JSON.stringify({ itemName, products }),
     };
   } catch (err) {
-    console.error(err);
+    console.error("Error in analyzeImage handler:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Something went wrong" }),
