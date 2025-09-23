@@ -1,52 +1,110 @@
-// After extracting possible item names
-const possibleItemNames = extractItemNames(visionResponse.responses?.[0]);
-console.log("possibleItemNames from Vision API:", possibleItemNames);
+import fetch from "node-fetch";
 
-// Initialize empty products array
-let products = [];
-let itemNameUsed = "Unknown item";
+// 🔹 Extract possible item names from Google Vision
+const extractItemNames = (visionResponse) => {
+  const names = [];
 
-// Loop through each name and query RapidAPI
-for (const name of possibleItemNames) {
-  console.log("Querying RapidAPI with:", name);  // <-- log the query
+  if (!visionResponse) return names;
 
-  const rapidApiUrl = new URL(`https://${process.env.VITE_REACT_APP_RAPIDAPI_HOST}/search`);
-  rapidApiUrl.search = new URLSearchParams({
-    q: name,   // use just 'name' here
-    country: "gb",
-    language: "en",
-    limit: "10",
-    sort_by: "LOWEST_PRICE",
-  }).toString();
+  const bestGuess =
+    visionResponse?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
+  if (bestGuess) names.push(bestGuess);
 
-  const rapidResponse = await fetch(rapidApiUrl.toString(), {
-    headers: {
-      "X-RapidAPI-Key": process.env.VITE_REACT_APP_RAPIDAPI_KEY,
-      "X-RapidAPI-Host": process.env.VITE_REACT_APP_RAPIDAPI_HOST,
-    },
-  });
+  const labelAnnotation =
+    visionResponse?.labelAnnotations?.[0]?.description?.trim();
+  if (labelAnnotation) names.push(labelAnnotation);
 
-  if (!rapidResponse.ok) {
-    console.log("RapidAPI request failed:", rapidResponse.statusText);
-    continue;
+  return [...new Set(names)]; // remove duplicates
+};
+
+export const handler = async (event) => {
+  try {
+    const { imageBase64 } = JSON.parse(event.body);
+
+    if (!imageBase64) {
+      return { statusCode: 400, body: JSON.stringify({ error: "No image data provided" }) };
+    }
+
+    // 🔹 Step 1: Call Google Vision API
+    const visionResponse = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_CLOUD_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requests: [
+            {
+              image: { content: imageBase64 },
+              features: [
+                { type: "WEB_DETECTION", maxResults: 5 },
+                { type: "LABEL_DETECTION", maxResults: 5 },
+              ],
+            },
+          ],
+        }),
+      }
+    ).then((res) => res.json());
+
+    console.log("Google Vision response:", JSON.stringify(visionResponse, null, 2));
+
+    // 🔹 Step 2: Extract item names from Vision
+    const possibleItemNames = extractItemNames(visionResponse.responses?.[0]);
+    console.log("possibleItemNames from Vision API:", possibleItemNames);
+
+    // 🔹 Step 3: Query RapidAPI
+    let products = [];
+    let itemNameUsed = "Unknown item";
+
+    for (const name of possibleItemNames) {
+      console.log("Querying RapidAPI with:", name);
+
+      const rapidApiUrl = new URL(
+        `https://${process.env.VITE_REACT_APP_RAPIDAPI_HOST}/search`
+      );
+      rapidApiUrl.search = new URLSearchParams({
+        q: name,
+        country: "gb",
+        language: "en",
+        limit: "10",
+        sort_by: "LOWEST_PRICE",
+      }).toString();
+
+      const rapidResponse = await fetch(rapidApiUrl.toString(), {
+        headers: {
+          "X-RapidAPI-Key": process.env.VITE_REACT_APP_RAPIDAPI_KEY,
+          "X-RapidAPI-Host": process.env.VITE_REACT_APP_RAPIDAPI_HOST,
+        },
+      });
+
+      if (!rapidResponse.ok) {
+        console.log("RapidAPI request failed:", rapidResponse.status, rapidResponse.statusText);
+        continue;
+      }
+
+      const json = await rapidResponse.json();
+      console.log("RapidAPI raw response:", JSON.stringify(json, null, 2));
+
+      products = json?.data?.products || json?.products || json?.items || [];
+
+      if (products.length > 0) {
+        itemNameUsed = name;
+        break;
+      }
+    }
+
+    console.log("Final products array:", products);
+    console.log("Item name used:", itemNameUsed);
+
+    // 🔹 Step 4: Return response
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        itemName: itemNameUsed,
+        data: products,
+      }),
+    };
+  } catch (error) {
+    console.error("Serverless function error:", error);
+    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
   }
-
-  const json = await rapidResponse.json();
-  console.log("RapidAPI response for this query:", json); // <-- log full response
-
-  products = json?.data?.products || json?.products || json?.items || [];
-
-  if (products.length > 0) {
-    itemNameUsed = name;  // <-- should now set correctly
-    break;
-  }
-}
-
-// Final log before returning
-console.log("Final products array:", products);
-console.log("Item name used:", itemNameUsed);
-
-return {
-  statusCode: 200,
-  body: JSON.stringify({ itemName: itemNameUsed, data: products }),
 };
