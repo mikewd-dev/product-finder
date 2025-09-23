@@ -1,3 +1,4 @@
+import vision from "@google-cloud/vision";
 import fetch from "node-fetch";
 
 // 🔹 Extract possible item names from Google Vision
@@ -22,33 +23,35 @@ export const handler = async (event) => {
     const { imageBase64 } = JSON.parse(event.body);
 
     if (!imageBase64) {
-      return { statusCode: 400, body: JSON.stringify({ error: "No image data provided" }) };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "No image data provided" }),
+      };
     }
 
-    // 🔹 Step 1: Call Google Vision API
-    const visionResponse = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${process.env.GOOGLE_CLOUD_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: { content: imageBase64 },
-              features: [
-                { type: "WEB_DETECTION", maxResults: 5 },
-                { type: "LABEL_DETECTION", maxResults: 5 },
-              ],
-            },
-          ],
-        }),
-      }
-    ).then((res) => res.json());
+    // 🔹 Step 1: Parse service account from env and init Vision client
+    const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
 
-    console.log("Google Vision response:", JSON.stringify(visionResponse, null, 2));
+    const client = new vision.ImageAnnotatorClient({
+      credentials: serviceAccount,
+    });
 
-    // 🔹 Step 2: Extract item names from Vision
-    const possibleItemNames = extractItemNames(visionResponse.responses?.[0]);
+    // 🔹 Step 2: Call Google Vision
+    const [visionResponse] = await client.annotateImage({
+      image: { content: imageBase64 },
+      features: [
+        { type: "WEB_DETECTION", maxResults: 5 },
+        { type: "LABEL_DETECTION", maxResults: 5 },
+      ],
+    });
+
+    console.log(
+      "Google Vision response:",
+      JSON.stringify(visionResponse, null, 2)
+    );
+
+    const possibleItemNames = extractItemNames(visionResponse);
     console.log("possibleItemNames from Vision API:", possibleItemNames);
 
     // 🔹 Step 3: Query RapidAPI
@@ -77,7 +80,11 @@ export const handler = async (event) => {
       });
 
       if (!rapidResponse.ok) {
-        console.log("RapidAPI request failed:", rapidResponse.status, rapidResponse.statusText);
+        console.log(
+          "RapidAPI request failed:",
+          rapidResponse.status,
+          rapidResponse.statusText
+        );
         continue;
       }
 
