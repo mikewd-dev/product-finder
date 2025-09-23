@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 
+// Helper to extract item names from Google Vision response
 const extractItemNames = (visionResponse) => {
   if (!visionResponse) return [];
 
@@ -28,7 +29,7 @@ export const handler = async (event) => {
     const imageBase64 = body.imageBase64;
 
     // Call Google Vision API
-    const visionRes = await fetch("YOUR_GOOGLE_VISION_FUNCTION_URL", {
+    const visionRes = await fetch(process.env.GOOGLE_VISION_FUNCTION_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: imageBase64 }),
@@ -47,7 +48,7 @@ export const handler = async (event) => {
     let products = [];
     if (itemName !== "Unknown item") {
       const rapidRes = await fetch(
-        `https://real-time-product-search.p.rapidapi.com/search?query=${encodeURIComponent(itemName)}`,
+        `https://${process.env.VITE_REACT_APP_RAPIDAPI_HOST}/search?query=${encodeURIComponent(itemName)}`,
         {
           method: "GET",
           headers: {
