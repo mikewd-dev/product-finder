@@ -1,18 +1,20 @@
 import fetch from "node-fetch";
 import { ImageAnnotatorClient } from "@google-cloud/vision";
 
-// Helper to extract item names from Google Vision response
+// --- Extract item names helper ---
 const extractItemNames = (visionResponse) => {
   if (!visionResponse) return [];
 
   const names = [];
 
+  // Best guess labels
   if (visionResponse.webDetection?.bestGuessLabels?.length) {
     visionResponse.webDetection.bestGuessLabels.forEach((labelObj) => {
       if (labelObj.label) names.push(labelObj.label.trim());
     });
   }
 
+  // Fallback: label annotations
   if (names.length === 0 && visionResponse.labelAnnotations?.length) {
     visionResponse.labelAnnotations.forEach((labelObj) => {
       if (labelObj.description) names.push(labelObj.description.trim());
@@ -22,24 +24,30 @@ const extractItemNames = (visionResponse) => {
   return [...new Set(names)];
 };
 
-// ---- GOOGLE VISION CLIENT SETUP ----
+// --- Google Vision Client Setup ---
 let visionClient;
 
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-  // Netlify: JSON stored as env var
-  const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-  visionClient = new ImageAnnotatorClient({ credentials });
-} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-  // Local: file path
-  visionClient = new ImageAnnotatorClient({
-    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  });
-} else {
-  throw new Error(
-    "No Google Vision credentials found. Set GOOGLE_APPLICATION_CREDENTIALS_JSON (Netlify) or GOOGLE_APPLICATION_CREDENTIALS (local)."
-  );
+try {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    // ✅ Netlify: JSON stored in env var
+    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    visionClient = new ImageAnnotatorClient({ credentials });
+  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    // ✅ Local: file path (e.g. ./google-credentials.json)
+    visionClient = new ImageAnnotatorClient({
+      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    });
+  } else {
+    throw new Error(
+      "No Google Vision credentials found. Use GOOGLE_APPLICATION_CREDENTIALS_JSON (Netlify) or GOOGLE_APPLICATION_CREDENTIALS (local)."
+    );
+  }
+} catch (err) {
+  console.error("Error setting up Vision client:", err);
+  throw err;
 }
 
+// --- Serverless Handler ---
 export const handler = async (event) => {
   try {
     if (!event.body) {
@@ -51,7 +59,7 @@ export const handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: "No imageBase64 provided" }) };
     }
 
-    // ---- CALL VISION API ----
+    // --- Call Vision API ---
     const [visionResponse] = await visionClient.annotateImage({
       requests: [
         {
@@ -65,7 +73,7 @@ export const handler = async (event) => {
     const itemName = possibleItemNames[0] || "Unknown item";
     console.log("Item name from Vision API:", itemName);
 
-    // ---- RAPIDAPI PRODUCTS ----
+    // --- Fetch from RapidAPI ---
     let products = [];
     const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
     const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
@@ -102,4 +110,4 @@ export const handler = async (event) => {
     console.error("analyzeImage function error:", err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message || "Something went wrong" }) };
   }
-};
+};v
