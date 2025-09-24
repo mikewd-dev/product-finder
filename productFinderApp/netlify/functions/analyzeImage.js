@@ -1,6 +1,7 @@
 // netlify/functions/analyzeImage.js
 import vision from "@google-cloud/vision";
 import sharp from "sharp";
+import fileType from "file-type"; // ⬅️ new helper to sniff format
 
 // Helper: extract item names
 const extractItemNames = (visionResponse) => {
@@ -36,11 +37,14 @@ export const handler = async (event) => {
     // Convert base64 → Buffer
     let imageBuffer = Buffer.from(imageBase64, "base64");
 
-    // Try to handle HEIC/HEIF automatically
-    try {
+    // Detect file type
+    const detectedType = await fileType.fromBuffer(imageBuffer);
+
+    if (detectedType?.mime === "image/heic" || detectedType?.mime === "image/heif") {
+      console.log("Converting HEIC/HEIF to JPEG...");
       imageBuffer = await sharp(imageBuffer).jpeg().toBuffer();
-    } catch (e) {
-      console.warn("Sharp conversion skipped:", e.message);
+    } else {
+      console.log("Image is already supported:", detectedType?.mime);
     }
 
     // Initialize Vision client
@@ -49,12 +53,14 @@ export const handler = async (event) => {
     });
 
     // Call Vision API
-    const [result] = await client.webDetection({ image: { content: imageBuffer.toString("base64") } });
+    const [result] = await client.webDetection({
+      image: { content: imageBuffer.toString("base64") },
+    });
     const possibleItemNames = extractItemNames(result);
 
     const itemName = possibleItemNames[0] || "Unknown item";
 
-    // Optionally query RapidAPI
+    // Query RapidAPI if item was found
     let products = [];
     if (itemName !== "Unknown item") {
       const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
@@ -76,4 +82,4 @@ export const handler = async (event) => {
     console.error("analyzeImage error:", err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
-};
+}; 
