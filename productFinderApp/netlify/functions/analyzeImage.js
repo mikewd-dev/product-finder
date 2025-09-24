@@ -1,69 +1,81 @@
-import vision from "@google-cloud/vision";
 import fetch from "node-fetch";
 
-// 🔹 Extract item names from Google Vision response
+// Helper to extract item names from Google Vision response
 const extractItemNames = (visionResponse) => {
   if (!visionResponse) return [];
 
   const names = [];
 
-  // Use best guess labels first
   if (visionResponse.webDetection?.bestGuessLabels?.length) {
     visionResponse.webDetection.bestGuessLabels.forEach((labelObj) => {
       if (labelObj.label) names.push(labelObj.label.trim());
     });
   }
 
-  // Fallback to label annotations
   if (names.length === 0 && visionResponse.labelAnnotations?.length) {
     visionResponse.labelAnnotations.forEach((labelObj) => {
       if (labelObj.description) names.push(labelObj.description.trim());
     });
   }
 
-  return [...new Set(names)]; // remove duplicates
+  return [...new Set(names)];
 };
 
 export const handler = async (event) => {
   try {
-    const body = JSON.parse(event.body || "{}");
-    const imageBase64 = body.imageBase64;
+    console.log("Incoming event.body:", event.body);
 
-    if (!imageBase64) {
-      throw new Error("No image present.");
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "No request body provided" }),
+      };
     }
 
-    // 🔹 Initialize Vision client with credentials from env
-    const client = new vision.ImageAnnotatorClient({
-      credentials: JSON.parse(process.env.GOOGLE_APLICATION_CREDENTIALS_JSON),
+    let body;
+    try {
+      body = JSON.parse(event.body);
+    } catch (err) {
+      console.error("JSON parse error:", err);
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid JSON in request body" }),
+      };
+    }
+
+    const { imageBase64 } = body;
+
+    if (!imageBase64) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "No image present in request" }),
+      };
+    }
+
+    // Call Google Vision API
+    const visionRes = await fetch(process.env.GOOGLE_VISION_FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageBase64 }),
     });
 
-    // 🔹 Call Google Vision API
-    const [visionResult] = await client.annotateImage({
-      image: { content: imageBase64 },
-      features: [
-        { type: "WEB_DETECTION" },
-        { type: "LABEL_DETECTION" },
-      ],
-    });
+    const visionData = await visionRes.json();
+    console.log("Google Vision response:", visionData);
 
-    console.log("Google Vision response:", JSON.stringify(visionResult, null, 2));
+    const possibleItemNames = extractItemNames(visionData.responses?.[0] || {});
+    console.log("possibleItemNames from Vision API:", possibleItemNames);
 
-    // 🔹 Extract item names
-    const possibleItemNames = extractItemNames(visionResult);
     const itemName = possibleItemNames[0] || "Unknown item";
-    console.log("Item name guess:", itemName);
 
-    // 🔹 Call RapidAPI only if we have an item name
     let products = [];
     if (itemName !== "Unknown item") {
-      const rapidHost = process.env.RAPIDAPI_HOST;
-      const rapidKey = process.env.RAPIDAPI_KEY;
+      const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
+      const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
 
-      const rapidApiUrl = `https://${rapidHost}/search?query=${encodeURIComponent(itemName)}`;
+      const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
+      console.log("Calling RapidAPI:", rapidApiUrl);
 
       const rapidRes = await fetch(rapidApiUrl, {
-        method: "GET",
         headers: {
           "X-RapidAPI-Key": rapidKey,
           "X-RapidAPI-Host": rapidHost,
@@ -74,6 +86,8 @@ export const handler = async (event) => {
       products = rapidData.products || [];
     }
 
+    console.log("Final products array:", products);
+
     return {
       statusCode: 200,
       body: JSON.stringify({ itemName, products }),
@@ -82,7 +96,7 @@ export const handler = async (event) => {
     console.error("analyzeImage function error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message || "Something went wrong" }),
+      body: JSON.stringify({ error: err.message }),
     };
   }
 };
