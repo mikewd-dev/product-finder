@@ -2,7 +2,7 @@
 const vision = require("@google-cloud/vision");
 const sharp = require("sharp");
 
-// Helper: extract item names
+// Helper: extract item names from Google Vision response
 const extractItemNames = (visionResponse) => {
   if (!visionResponse) return [];
   const names = [];
@@ -33,18 +33,18 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
     }
 
-    // Remove any data URL prefix
-    imageBase64 = imageBase64.split(",")[1] || imageBase64;
-
+    // Remove any data URL prefix and whitespace
+    imageBase64 = (imageBase64.split(",")[1] || imageBase64).replace(/\s/g, '');
     let imageBuffer = Buffer.from(imageBase64, "base64");
 
-    // Normalize all images to JPEG
+    // Convert all images to JPEG to guarantee compatibility
     try {
       imageBuffer = await sharp(imageBuffer)
         .jpeg({ quality: 90 })
         .toBuffer();
     } catch (e) {
-      console.warn("Sharp conversion skipped:", e.message);
+      console.error("Sharp conversion failed:", e.message);
+      return { statusCode: 400, body: JSON.stringify({ error: "Image format unsupported or corrupt" }) };
     }
 
     // Initialize Vision client
@@ -60,23 +60,21 @@ exports.handler = async (event) => {
     const possibleItemNames = extractItemNames(result);
     const itemName = possibleItemNames[0] || "Unknown item";
 
-    // Query RapidAPI only if we have a valid item
+    // Call RapidAPI only if item is valid
     let products = [];
-    if (itemName !== "Unknown item") {
-      const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
-      const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
+    const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
+    const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
 
-      if (rapidHost && rapidKey) {
-        const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
-        const rapidRes = await fetch(rapidApiUrl, {
-          headers: {
-            "X-RapidAPI-Key": rapidKey,
-            "X-RapidAPI-Host": rapidHost,
-          },
-        });
-        const rapidData = await rapidRes.json();
-        products = rapidData.products || [];
-      }
+    if (itemName !== "Unknown item" && rapidHost && rapidKey) {
+      const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
+      const rapidRes = await fetch(rapidApiUrl, {
+        headers: {
+          "X-RapidAPI-Key": rapidKey,
+          "X-RapidAPI-Host": rapidHost,
+        },
+      });
+      const rapidData = await rapidRes.json();
+      products = rapidData.products || [];
     }
 
     return { statusCode: 200, body: JSON.stringify({ itemName, products }) };
