@@ -1,7 +1,6 @@
 // netlify/functions/analyzeImage.js
 const vision = require("@google-cloud/vision");
 const sharp = require("sharp");
-const fileType = require("file-type");
 
 // Helper: extract item names
 const extractItemNames = (visionResponse) => {
@@ -29,43 +28,55 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: "No request body" }) };
     }
 
-    const { imageBase64 } = JSON.parse(event.body);
+    let { imageBase64 } = JSON.parse(event.body);
     if (!imageBase64) {
       return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
     }
 
+    // Remove any data URL prefix
+    imageBase64 = imageBase64.split(",")[1] || imageBase64;
+
     let imageBuffer = Buffer.from(imageBase64, "base64");
 
-    const detectedType = await fileType.fromBuffer(imageBuffer);
-    if (detectedType?.mime === "image/heic" || detectedType?.mime === "image/heif") {
-      imageBuffer = await sharp(imageBuffer).jpeg().toBuffer();
+    // Normalize all images to JPEG
+    try {
+      imageBuffer = await sharp(imageBuffer)
+        .jpeg({ quality: 90 })
+        .toBuffer();
+    } catch (e) {
+      console.warn("Sharp conversion skipped:", e.message);
     }
 
+    // Initialize Vision client
     const client = new vision.ImageAnnotatorClient({
       credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON),
     });
 
+    // Call Google Vision API
     const [result] = await client.webDetection({
       image: { content: imageBuffer.toString("base64") },
     });
-    const possibleItemNames = extractItemNames(result);
 
+    const possibleItemNames = extractItemNames(result);
     const itemName = possibleItemNames[0] || "Unknown item";
 
+    // Query RapidAPI only if we have a valid item
     let products = [];
     if (itemName !== "Unknown item") {
       const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
       const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
 
-      const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
-      const rapidRes = await fetch(rapidApiUrl, {
-        headers: {
-          "X-RapidAPI-Key": rapidKey,
-          "X-RapidAPI-Host": rapidHost,
-        },
-      });
-      const rapidData = await rapidRes.json();
-      products = rapidData.products || [];
+      if (rapidHost && rapidKey) {
+        const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
+        const rapidRes = await fetch(rapidApiUrl, {
+          headers: {
+            "X-RapidAPI-Key": rapidKey,
+            "X-RapidAPI-Host": rapidHost,
+          },
+        });
+        const rapidData = await rapidRes.json();
+        products = rapidData.products || [];
+      }
     }
 
     return { statusCode: 200, body: JSON.stringify({ itemName, products }) };
