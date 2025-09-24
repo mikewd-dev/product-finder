@@ -1,23 +1,7 @@
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod2) => function __require() {
   return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
 };
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toCommonJS = (mod2) => __copyProps(__defProp({}, "__esModule", { value: true }), mod2);
 
 // node_modules/@google-cloud/vision/build/protos/protos.json
 var require_protos = __commonJS({
@@ -26494,10 +26478,10 @@ var require_server_call = __commonJS({
     ServerDuplexStreamImpl.prototype._write = ServerWritableStreamImpl.prototype._write;
     ServerDuplexStreamImpl.prototype._final = ServerWritableStreamImpl.prototype._final;
     var Http2ServerCallStream = class extends events_1.EventEmitter {
-      constructor(stream, handler2, options) {
+      constructor(stream, handler, options) {
         super();
         this.stream = stream;
-        this.handler = handler2;
+        this.handler = handler;
         this.cancelled = false;
         this.deadlineTimer = null;
         this.statusSent = false;
@@ -27418,12 +27402,12 @@ var require_server = __commonJS({
           (0, channelz_1.unregisterChannelzRef)(this.channelzRef);
         }
       }
-      register(name, handler2, serialize, deserialize, type) {
+      register(name, handler, serialize, deserialize, type) {
         if (this.handlers.has(name)) {
           return false;
         }
         this.handlers.set(name, {
-          func: handler2,
+          func: handler,
           serialize,
           deserialize,
           type,
@@ -27507,12 +27491,12 @@ var require_server = __commonJS({
       }
       _retrieveHandler(path) {
         this.trace("Received call to method " + path + " at address " + this.serverAddressString);
-        const handler2 = this.handlers.get(path);
-        if (handler2 === void 0) {
+        const handler = this.handlers.get(path);
+        if (handler === void 0) {
           this.trace("No handler registered for method " + path + ". Sending UNIMPLEMENTED status.");
           return null;
         }
-        return handler2;
+        return handler;
       }
       _respondWithError(err, stream, channelzSessionInfo = null) {
         const call = new server_call_1.Http2ServerCallStream(stream, null, this.options);
@@ -27535,12 +27519,12 @@ var require_server = __commonJS({
           return;
         }
         const path = headers[HTTP2_HEADER_PATH];
-        const handler2 = this._retrieveHandler(path);
-        if (!handler2) {
+        const handler = this._retrieveHandler(path);
+        if (!handler) {
           this._respondWithError(getUnimplementedStatusResponse(path), stream, channelzSessionInfo);
           return;
         }
-        const call = new server_call_1.Http2ServerCallStream(stream, handler2, this.options);
+        const call = new server_call_1.Http2ServerCallStream(stream, handler, this.options);
         call.once("callEnd", (code) => {
           if (code === constants_1.Status.OK) {
             this.callTracker.addCallSucceeded();
@@ -27565,12 +27549,12 @@ var require_server = __commonJS({
             channelzSessionInfo.lastMessageReceivedTimestamp = /* @__PURE__ */ new Date();
           });
         }
-        if (!this._runHandlerForCall(call, handler2, headers)) {
+        if (!this._runHandlerForCall(call, handler, headers)) {
           this.callTracker.addCallFailed();
           channelzSessionInfo === null || channelzSessionInfo === void 0 ? void 0 : channelzSessionInfo.streamTracker.addCallFailed();
           call.sendError({
             code: constants_1.Status.INTERNAL,
-            details: `Unknown handler type: ${handler2.type}`
+            details: `Unknown handler type: ${handler.type}`
           });
         }
       }
@@ -27579,33 +27563,33 @@ var require_server = __commonJS({
           return;
         }
         const path = headers[HTTP2_HEADER_PATH];
-        const handler2 = this._retrieveHandler(path);
-        if (!handler2) {
+        const handler = this._retrieveHandler(path);
+        if (!handler) {
           this._respondWithError(getUnimplementedStatusResponse(path), stream, null);
           return;
         }
-        const call = new server_call_1.Http2ServerCallStream(stream, handler2, this.options);
-        if (!this._runHandlerForCall(call, handler2, headers)) {
+        const call = new server_call_1.Http2ServerCallStream(stream, handler, this.options);
+        if (!this._runHandlerForCall(call, handler, headers)) {
           call.sendError({
             code: constants_1.Status.INTERNAL,
-            details: `Unknown handler type: ${handler2.type}`
+            details: `Unknown handler type: ${handler.type}`
           });
         }
       }
-      _runHandlerForCall(call, handler2, headers) {
+      _runHandlerForCall(call, handler, headers) {
         var _a;
         const metadata = call.receiveMetadata(headers);
         const encoding = (_a = metadata.get("grpc-encoding")[0]) !== null && _a !== void 0 ? _a : "identity";
         metadata.remove("grpc-encoding");
-        const { type } = handler2;
+        const { type } = handler;
         if (type === "unary") {
-          handleUnary(call, handler2, metadata, encoding);
+          handleUnary(call, handler, metadata, encoding);
         } else if (type === "clientStream") {
-          handleClientStreaming(call, handler2, metadata, encoding);
+          handleClientStreaming(call, handler, metadata, encoding);
         } else if (type === "serverStream") {
-          handleServerStreaming(call, handler2, metadata, encoding);
+          handleServerStreaming(call, handler, metadata, encoding);
         } else if (type === "bidi") {
-          handleBidiStreaming(call, handler2, metadata, encoding);
+          handleBidiStreaming(call, handler, metadata, encoding);
         } else {
           return false;
         }
@@ -27625,8 +27609,8 @@ var require_server = __commonJS({
           }
         }
         this.serverAddressString = serverAddressString;
-        const handler2 = this.channelzEnabled ? this._channelzHandler : this._streamHandler;
-        http2Server.on("stream", handler2.bind(this));
+        const handler = this.channelzEnabled ? this._channelzHandler : this._streamHandler;
+        http2Server.on("stream", handler.bind(this));
         http2Server.on("session", (session) => {
           var _a, _b, _c, _d, _e;
           if (!this.started) {
@@ -27714,22 +27698,22 @@ var require_server = __commonJS({
       }
     };
     exports2.Server = Server;
-    async function handleUnary(call, handler2, metadata, encoding) {
+    async function handleUnary(call, handler, metadata, encoding) {
       try {
         const request = await call.receiveUnaryMessage(encoding);
         if (request === void 0 || call.cancelled) {
           return;
         }
         const emitter = new server_call_1.ServerUnaryCallImpl(call, metadata, request);
-        handler2.func(emitter, (err, value, trailer, flags) => {
+        handler.func(emitter, (err, value, trailer, flags) => {
           call.sendUnaryMessage(err, value, trailer, flags);
         });
       } catch (err) {
         call.sendError(err);
       }
     }
-    function handleClientStreaming(call, handler2, metadata, encoding) {
-      const stream = new server_call_1.ServerReadableStreamImpl(call, metadata, handler2.deserialize, encoding);
+    function handleClientStreaming(call, handler, metadata, encoding) {
+      const stream = new server_call_1.ServerReadableStreamImpl(call, metadata, handler.deserialize, encoding);
       function respond(err, value, trailer, flags) {
         stream.destroy();
         call.sendUnaryMessage(err, value, trailer, flags);
@@ -27738,26 +27722,26 @@ var require_server = __commonJS({
         return;
       }
       stream.on("error", respond);
-      handler2.func(stream, respond);
+      handler.func(stream, respond);
     }
-    async function handleServerStreaming(call, handler2, metadata, encoding) {
+    async function handleServerStreaming(call, handler, metadata, encoding) {
       try {
         const request = await call.receiveUnaryMessage(encoding);
         if (request === void 0 || call.cancelled) {
           return;
         }
-        const stream = new server_call_1.ServerWritableStreamImpl(call, metadata, handler2.serialize, request);
-        handler2.func(stream);
+        const stream = new server_call_1.ServerWritableStreamImpl(call, metadata, handler.serialize, request);
+        handler.func(stream);
       } catch (err) {
         call.sendError(err);
       }
     }
-    function handleBidiStreaming(call, handler2, metadata, encoding) {
-      const stream = new server_call_1.ServerDuplexStreamImpl(call, metadata, handler2.serialize, handler2.deserialize, encoding);
+    function handleBidiStreaming(call, handler, metadata, encoding) {
+      const stream = new server_call_1.ServerDuplexStreamImpl(call, metadata, handler.serialize, handler.deserialize, encoding);
       if (call.cancelled) {
         return;
       }
-      handler2.func(stream);
+      handler.func(stream);
     }
   }
 });
@@ -32749,49 +32733,63 @@ var require_common3 = __commonJS({
         createDebug.namespaces = namespaces;
         createDebug.names = [];
         createDebug.skips = [];
-        let i;
-        const split = (typeof namespaces === "string" ? namespaces : "").split(/[\s,]+/);
-        const len = split.length;
-        for (i = 0; i < len; i++) {
-          if (!split[i]) {
-            continue;
-          }
-          namespaces = split[i].replace(/\*/g, ".*?");
-          if (namespaces[0] === "-") {
-            createDebug.skips.push(new RegExp("^" + namespaces.slice(1) + "$"));
+        const split = (typeof namespaces === "string" ? namespaces : "").trim().replace(/\s+/g, ",").split(",").filter(Boolean);
+        for (const ns of split) {
+          if (ns[0] === "-") {
+            createDebug.skips.push(ns.slice(1));
           } else {
-            createDebug.names.push(new RegExp("^" + namespaces + "$"));
+            createDebug.names.push(ns);
           }
         }
       }
+      function matchesTemplate(search, template) {
+        let searchIndex = 0;
+        let templateIndex = 0;
+        let starIndex = -1;
+        let matchIndex = 0;
+        while (searchIndex < search.length) {
+          if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === "*")) {
+            if (template[templateIndex] === "*") {
+              starIndex = templateIndex;
+              matchIndex = searchIndex;
+              templateIndex++;
+            } else {
+              searchIndex++;
+              templateIndex++;
+            }
+          } else if (starIndex !== -1) {
+            templateIndex = starIndex + 1;
+            matchIndex++;
+            searchIndex = matchIndex;
+          } else {
+            return false;
+          }
+        }
+        while (templateIndex < template.length && template[templateIndex] === "*") {
+          templateIndex++;
+        }
+        return templateIndex === template.length;
+      }
       function disable() {
         const namespaces = [
-          ...createDebug.names.map(toNamespace),
-          ...createDebug.skips.map(toNamespace).map((namespace) => "-" + namespace)
+          ...createDebug.names,
+          ...createDebug.skips.map((namespace) => "-" + namespace)
         ].join(",");
         createDebug.enable("");
         return namespaces;
       }
       function enabled(name) {
-        if (name[name.length - 1] === "*") {
-          return true;
-        }
-        let i;
-        let len;
-        for (i = 0, len = createDebug.skips.length; i < len; i++) {
-          if (createDebug.skips[i].test(name)) {
+        for (const skip of createDebug.skips) {
+          if (matchesTemplate(name, skip)) {
             return false;
           }
         }
-        for (i = 0, len = createDebug.names.length; i < len; i++) {
-          if (createDebug.names[i].test(name)) {
+        for (const ns of createDebug.names) {
+          if (matchesTemplate(name, ns)) {
             return true;
           }
         }
         return false;
-      }
-      function toNamespace(regexp) {
-        return regexp.toString().substring(2, regexp.toString().length - 2).replace(/\.\*\?$/, "*");
       }
       function coerce(val) {
         if (val instanceof Error) {
@@ -32911,10 +32909,11 @@ var require_browser = __commonJS({
       if (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
         return false;
       }
+      let m;
       return typeof document !== "undefined" && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // Is firebug? http://stackoverflow.com/a/398120/376773
       typeof window !== "undefined" && window.console && (window.console.firebug || window.console.exception && window.console.table) || // Is firefox >= v31?
       // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-      typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31 || // Double check webkit in userAgent just in case we are in a worker
+      typeof navigator !== "undefined" && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31 || // Double check webkit in userAgent just in case we are in a worker
       typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
     }
     function formatArgs(args) {
@@ -32952,7 +32951,7 @@ var require_browser = __commonJS({
     function load() {
       let r;
       try {
-        r = exports2.storage.getItem("debug");
+        r = exports2.storage.getItem("debug") || exports2.storage.getItem("DEBUG");
       } catch (error) {
       }
       if (!r && typeof process !== "undefined" && "env" in process) {
@@ -33235,7 +33234,7 @@ var require_node = __commonJS({
       return (/* @__PURE__ */ new Date()).toISOString() + " ";
     }
     function log(...args) {
-      return process.stderr.write(util.format(...args) + "\n");
+      return process.stderr.write(util.formatWithOptions(exports2.inspectOpts, ...args) + "\n");
     }
     function save(namespaces) {
       if (namespaces) {
@@ -93284,7 +93283,7 @@ var require_uri_all = __commonJS({
       function unescapeComponent(str, options) {
         return str && str.toString().replace(!options || !options.iri ? URI_PROTOCOL.PCT_ENCODED : IRI_PROTOCOL.PCT_ENCODED, pctDecChars);
       }
-      var handler2 = {
+      var handler = {
         scheme: "http",
         domainHost: true,
         parse: function parse2(components, options) {
@@ -93306,9 +93305,9 @@ var require_uri_all = __commonJS({
       };
       var handler$1 = {
         scheme: "https",
-        domainHost: handler2.domainHost,
-        parse: handler2.parse,
-        serialize: handler2.serialize
+        domainHost: handler.domainHost,
+        parse: handler.parse,
+        serialize: handler.serialize
       };
       function isSecure(wsComponents) {
         return typeof wsComponents.secure === "boolean" ? wsComponents.secure : String(wsComponents.scheme).toLowerCase() === "wss";
@@ -93504,7 +93503,7 @@ var require_uri_all = __commonJS({
           return urnComponents;
         }
       };
-      SCHEMES[handler2.scheme] = handler2;
+      SCHEMES[handler.scheme] = handler;
       SCHEMES[handler$1.scheme] = handler$1;
       SCHEMES[handler$2.scheme] = handler$2;
       SCHEMES[handler$3.scheme] = handler$3;
@@ -186853,12 +186852,8 @@ var require_src12 = __commonJS({
 });
 
 // netlify/functions/analyzeImage.js
-var analyzeImage_exports = {};
-__export(analyzeImage_exports, {
-  handler: () => handler
-});
-module.exports = __toCommonJS(analyzeImage_exports);
 var vision = require_src12();
+var sharp = require("sharp");
 var extractItemNames = (visionResponse) => {
   if (!visionResponse) return [];
   const names = [];
@@ -186874,40 +186869,41 @@ var extractItemNames = (visionResponse) => {
   }
   return [...new Set(names)];
 };
-var handler = async (event) => {
+exports.handler = async (event) => {
   try {
-    console.log("Incoming event.body:", event.body);
     if (!event.body) {
-      return { statusCode: 400, body: JSON.stringify({ error: "No request body provided" }) };
+      return { statusCode: 400, body: JSON.stringify({ error: "No request body" }) };
     }
-    let body;
-    try {
-      body = JSON.parse(event.body);
-    } catch (err) {
-      console.error("JSON parse error:", err);
-      return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON in request body" }) };
-    }
-    const { imageBase64 } = body;
+    let { imageBase64 } = JSON.parse(event.body);
     if (!imageBase64) {
       return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
     }
+    imageBase64 = imageBase64.split(",")[1] || imageBase64;
+    let imageBuffer = Buffer.from(imageBase64, "base64");
+    try {
+      imageBuffer = await sharp(imageBuffer).jpeg({ quality: 90 }).toBuffer();
+    } catch (err) {
+      console.error("Sharp conversion failed:", err.message);
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Image format unsupported or corrupt" })
+      };
+    }
     const client = new vision.ImageAnnotatorClient({
-      credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON)
+      credentials: JSON.parse(
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON.replace(/\\n/g, "\n")
+      )
     });
-    const [result] = await client.webDetection({ image: { content: imageBase64 } });
-    console.log("Google Vision result:", result);
+    const [result] = await client.webDetection({
+      image: { content: imageBuffer.toString("base64") }
+    });
     const possibleItemNames = extractItemNames(result);
-    console.log("Possible item names:", possibleItemNames);
     const itemName = possibleItemNames[0] || "Unknown item";
     let products = [];
-    if (itemName !== "Unknown item") {
-      const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
-      const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
-      if (!rapidHost || !rapidKey) {
-        throw new Error("RapidAPI credentials are missing");
-      }
+    const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
+    const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
+    if (itemName !== "Unknown item" && rapidHost && rapidKey) {
       const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
-      console.log("Calling RapidAPI:", rapidApiUrl);
       const rapidRes = await fetch(rapidApiUrl, {
         headers: {
           "X-RapidAPI-Key": rapidKey,
@@ -186917,17 +186913,12 @@ var handler = async (event) => {
       const rapidData = await rapidRes.json();
       products = rapidData.products || [];
     }
-    console.log("Final products array:", products);
     return { statusCode: 200, body: JSON.stringify({ itemName, products }) };
   } catch (err) {
-    console.error("analyzeImage function error:", err);
+    console.error("analyzeImage error:", err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  handler
-});
 /*! Bundled license information:
 
 @grpc/proto-loader/build/src/util.js:
