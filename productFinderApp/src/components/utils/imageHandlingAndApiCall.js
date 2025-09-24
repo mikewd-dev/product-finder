@@ -1,4 +1,3 @@
-import heic2any from "heic2any";
 
 // 🔹 Safely modify and normalize product data
 export const modifyData = (products = []) => {

@@ -1,29 +1,23 @@
-import heic2any from "heic2any";
 import { modifyData } from "./imageHandlingAndApiCall";
 
 export const handleImageUpload = async (imageFile, setProductName, setError, setLoading) => {
   try {
     setLoading(true);
 
-    // 1️⃣ Convert HEIC or unsupported formats
-    let convertedImage = imageFile;
-    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
-      convertedImage = await heic2any({ blob: imageFile });
-    }
-
-    // 2️⃣ Convert to Base64
+    // 1️⃣ Convert file to Base64
     const reader = new FileReader();
     const analyzeResponse = await new Promise((resolve, reject) => {
       reader.onload = async () => {
         try {
           if (!reader.result) return reject(new Error("Failed to read image"));
           const imageBase64 = reader.result.split(",")[1];
+          const fileType = imageFile.type;
 
-          // 3️⃣ Call Netlify function (Vision + RapidAPI)
+          // 2️⃣ Call Netlify function (send base64 + type)
           const response = await fetch("/.netlify/functions/analyzeImage", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64 }),
+            body: JSON.stringify({ imageBase64, fileType }),
           });
 
           if (!response.ok) {
@@ -38,20 +32,20 @@ export const handleImageUpload = async (imageFile, setProductName, setError, set
         }
       };
       reader.onerror = () => reject(new Error("Failed to read image file"));
-      reader.readAsDataURL(convertedImage);
+      reader.readAsDataURL(imageFile);
     });
 
-    // 4️⃣ Use itemName from Netlify function (RapidAPI result)
+    // 3️⃣ Extract result
     const itemName = analyzeResponse.itemName || "Unknown item";
     setProductName(itemName);
 
-    if (!analyzeResponse.data || analyzeResponse.data.length === 0) {
+    if (!analyzeResponse.products || analyzeResponse.products.length === 0) {
       setError("No products found for this item.");
       return [];
     }
 
-    // 5️⃣ Shape products for frontend
-    return modifyData(analyzeResponse.data);
+    // 4️⃣ Shape products for frontend
+    return modifyData(analyzeResponse.products);
 
   } catch (err) {
     console.error("Error handling image upload:", err);
