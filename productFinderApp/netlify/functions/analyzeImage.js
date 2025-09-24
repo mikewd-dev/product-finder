@@ -1,4 +1,3 @@
-// netlify/functions/vision.js
 const vision = require("@google-cloud/vision");
 
 const decodedCredentials = Buffer.from(
@@ -21,28 +20,28 @@ exports.handler = async function (event) {
       };
     }
 
-    const request = imageUrl
-      ? { image: { source: { imageUri: imageUrl } } }
-      : { image: { content: imageBase64 } };
+    // Prepare image source
+    const image = imageUrl
+      ? { source: { imageUri: imageUrl } }
+      : { content: Buffer.from(imageBase64, "base64") };
 
-    // Perform label detection
-    const [labelResult] = await client.labelDetection(request);
-    const labels = labelResult.labelAnnotations?.map(l => l.description) || [];
+    const request = {
+      image,
+      features: [
+        { type: "LABEL_DETECTION" },
+        { type: "TEXT_DETECTION" }
+      ],
+    };
 
-    // Perform text detection (OCR)
-    const [textResult] = await client.textDetection(request);
-    const texts = textResult.textAnnotations?.map(t => t.description) || [];
+    const [result] = await client.annotateImage(request);
 
-    // Combine labels and text for product matching
+    const labels = result.labelAnnotations?.map(l => l.description) || [];
+    const texts = result.textAnnotations?.map(t => t.description) || [];
     const combined = [...texts, ...labels];
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        labels,
-        texts,
-        combined, // Use this array in your product search
-      }),
+      body: JSON.stringify({ labels, texts, combined }),
     };
   } catch (error) {
     console.error(error);
