@@ -4,7 +4,6 @@ import ProductGrid from "./ProductGrid";
 import { useDrag } from "react-dnd";
 import { useDrop } from "react-dnd";
 import { ItemTypes } from "./ItemTypes";
-import heic2any from "heic2any";
 import { imageFileResizer } from "react-image-file-resizer";
 import ProductCarousel from "./ProductCarousel";
 import {handleImage} from "./utils/imageHandlingAndApiCall"
