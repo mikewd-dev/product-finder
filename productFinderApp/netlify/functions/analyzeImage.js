@@ -1,9 +1,10 @@
+// netlify/functions/vision.js
 const vision = require("@google-cloud/vision");
 const fs = require('fs');
 const path = require('path');
 
-// Read the Base64 string directly from the file
-const encodedCredentials = fs.readFileSync(path.join(__dirname, '.netlify', 'base64-credentials.txt'), 'utf8');
+// Read the Base64 string directly from the file in the root directory
+const encodedCredentials = fs.readFileSync(path.join(__dirname, '../base64-credentials.txt'), 'utf8');
 
 // Decode the string and parse the JSON
 const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf-8');
