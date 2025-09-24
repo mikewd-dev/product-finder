@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Read the Base64 string directly from the file in the root directory
-const encodedCredentials = fs.readFileSync(path.join(__dirname, '../base64-credentials.txt'), 'utf8');
+const encodedCredentials = fs.readFileSync(path.join(__dirname, 'base64-credentials.txt'), 'utf8');
 
 // Decode the string and parse the JSON
 const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf-8');
