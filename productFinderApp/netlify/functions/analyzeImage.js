@@ -7,6 +7,8 @@ const decodedCredentials = Buffer.from(
   'base64'
 ).toString('utf-8');
 
+console.log('Decoded credentials:', decodedCredentials);
+
 const client = new vision.ImageAnnotatorClient({
   credentials: JSON.parse(decodedCredentials),
 });
