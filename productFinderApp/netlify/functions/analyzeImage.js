@@ -2,7 +2,7 @@
 const vision = require("@google-cloud/vision");
 const sharp = require("sharp");
 
-// Helper: extract item names from Google Vision response
+// Helper: extract item names
 const extractItemNames = (visionResponse) => {
   if (!visionResponse) return [];
   const names = [];
@@ -33,26 +33,31 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
     }
 
-    // Remove any data URL prefix and whitespace
-    imageBase64 = (imageBase64.split(",")[1] || imageBase64).replace(/\s/g, '');
+    // Remove any data URI prefix
+    imageBase64 = imageBase64.split(",")[1] || imageBase64;
     let imageBuffer = Buffer.from(imageBase64, "base64");
 
-    // Convert all images to JPEG to guarantee compatibility
+    // Convert to JPEG using Sharp
     try {
       imageBuffer = await sharp(imageBuffer)
         .jpeg({ quality: 90 })
         .toBuffer();
-    } catch (e) {
-      console.error("Sharp conversion failed:", e.message);
-      return { statusCode: 400, body: JSON.stringify({ error: "Image format unsupported or corrupt" }) };
+    } catch (err) {
+      console.error("Sharp conversion failed:", err.message);
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Image format unsupported or corrupt" }),
+      };
     }
 
-    // Initialize Vision client
+    // Initialize Google Vision client with fixed private key
     const client = new vision.ImageAnnotatorClient({
-      credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON),
+      credentials: JSON.parse(
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON.replace(/\\n/g, "\n")
+      ),
     });
 
-    // Call Google Vision API
+    // Call Vision API
     const [result] = await client.webDetection({
       image: { content: imageBuffer.toString("base64") },
     });
@@ -60,11 +65,10 @@ exports.handler = async (event) => {
     const possibleItemNames = extractItemNames(result);
     const itemName = possibleItemNames[0] || "Unknown item";
 
-    // Call RapidAPI only if item is valid
+    // Query RapidAPI only if we have a valid item
     let products = [];
     const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
     const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
-
     if (itemName !== "Unknown item" && rapidHost && rapidKey) {
       const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
       const rapidRes = await fetch(rapidApiUrl, {
