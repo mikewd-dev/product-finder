@@ -1,6 +1,6 @@
 // netlify/functions/analyzeImage.js
 
-const vision = require("@google-cloud/vision");
+import vision from "@google-cloud/vision";
 
 // Helper to extract item names from Google Vision response
 const extractItemNames = (visionResponse) => {
