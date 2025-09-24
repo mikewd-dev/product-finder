@@ -17,7 +17,7 @@
     "axios": "^1.11.0",
     "bootstrap": "^5.3.2",
     "dotenv": "^16.3.1",
-    "file-type": "^21.0.0",
+    "file-type": "^16.5.4",
     "formidable": "^3.5.4",
     "node-cloud-vision-api": "^0.2.0",
     "react": "^18.2.0",
@@ -46,4 +46,3 @@
     "vitest": "^1.2.1"
   }
 }
- 
