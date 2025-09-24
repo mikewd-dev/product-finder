@@ -35,7 +35,7 @@ export const handler = async (event) => {
 
     // 🔹 Initialize Vision client with credentials from env
     const client = new vision.ImageAnnotatorClient({
-      credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON),
+      credentials: JSON.parse(process.env.GOOGLE_APLICATION_CREDENTIALS_JSON),
     });
 
     // 🔹 Call Google Vision API
