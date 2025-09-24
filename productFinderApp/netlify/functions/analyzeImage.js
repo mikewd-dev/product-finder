@@ -1,14 +1,14 @@
-// netlify/functions/vision.js
 const vision = require("@google-cloud/vision");
+const fs = require('fs');
+const path = require('path');
 
-// Decode base64 JSON and create Vision client
-const decodedCredentials = Buffer.from(
-  process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
-  'base64'
-).toString('utf-8');
+// Read the Base64 string directly from the file
+const encodedCredentials = fs.readFileSync(path.join(__dirname, '.netlify', 'base64-credentials.txt'), 'utf8');
 
-console.log('Decoded credentials:', decodedCredentials);
+// Decode the string and parse the JSON
+const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf-8');
 
+// Create the Vision client using the decoded credentials
 const client = new vision.ImageAnnotatorClient({
   credentials: JSON.parse(decodedCredentials),
 });

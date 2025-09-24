@@ -27,3 +27,5 @@ dist-ssr
 
 credentials/
 google-credentials.json
+
+base64-credentials.txt
