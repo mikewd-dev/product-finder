@@ -33,20 +33,17 @@ exports.handler = async (event) => {
       ],
     });
 
-    // Gather all possible names
+    // Gather all possible names from Vision API
     const namesToTry = [];
 
-    // 1️⃣ Web Detection
     if (result.webDetection?.bestGuessLabels?.length) {
       result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
     }
 
-    // 2️⃣ Label Annotations
     if (result.labelAnnotations?.length) {
       result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
     }
 
-    // 3️⃣ Text Detection
     if (result.textAnnotations?.length) {
       result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
     }
@@ -60,10 +57,10 @@ exports.handler = async (event) => {
     let products = [];
     let itemName = "Unknown item";
 
-    // Try each name until we get results
+    // Try each name until we get results from RapidAPI
     for (const name of uniqueNames) {
       const rapidRes = await fetch(
-        `https://${rapidHost}/products/search?query=${encodeURIComponent(name)}`,
+        `https://${rapidHost}/products/search?q=${encodeURIComponent(name)}&country=gb&language=en`,
         {
           headers: {
             "X-RapidAPI-Key": rapidKey,
@@ -75,8 +72,8 @@ exports.handler = async (event) => {
       if (!rapidRes.ok) continue;
 
       const data = await rapidRes.json();
-      if (data.products?.length) {
-        products = data.products;
+      if (data.data?.products?.length) {
+        products = data.data.products;
         itemName = name;
         break;
       }
