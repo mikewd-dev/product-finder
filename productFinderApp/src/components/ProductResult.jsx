@@ -9,7 +9,7 @@ import AnalysisResults from "./AnalysisResultsDisplay";
 
 const ProductResult = ({ inputImageFile = null }) => {
   const [productName, setProductName] = useState("");
-  const [productData, setProductData] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [imageFile, setImageFile] = useState(inputImageFile);
@@ -17,20 +17,18 @@ const ProductResult = ({ inputImageFile = null }) => {
 
   const imageFileRef = useRef(imageFile);
 
-  // Wrapper for upload + analyze
-  const handleImageUploadWrapper = async (file) => {
+  const handleImageUploadWrapper = (file) => {
     handleUpload(
       file,
       setProductName,
       setError,
       setLoading,
-      setProductData,
+      setProducts,
       setAnalysisResults
     );
   };
 
-  // Handle image drop (no conversion here)
-  const handleImageDrop = async (item) => {
+  const handleImageDrop = (item) => {
     try {
       setImageFile(item.imageFile);
       handleImageUploadWrapper(item.imageFile);
@@ -40,7 +38,6 @@ const ProductResult = ({ inputImageFile = null }) => {
     }
   };
 
-  // Drag & drop hooks
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.IMAGE,
     item: { type: ItemTypes.IMAGE, imageFile },
@@ -64,7 +61,7 @@ const ProductResult = ({ inputImageFile = null }) => {
         {imageFile && (
           <img
             src={URL.createObjectURL(imageFile)}
-            alt="Dragged Image"
+            alt="Dragged"
             style={{ width: "100%", height: "auto" }}
           />
         )}
@@ -77,21 +74,18 @@ const ProductResult = ({ inputImageFile = null }) => {
 
       <div ref={drop}>
         {loading && <p>Loading...</p>}
-        {error && <p style={{ color: "red" }}>Error: {error}</p>}
+        {error && <p>Error: {error}</p>}
 
-        {productData && productData.length > 0 ? (
-          <div>
-            <h2>Products:</h2>
-            <ProductCarousel products={productData} />
-            <ProductGrid products={productData} />
-          </div>
+        {products.length > 0 ? (
+          <>
+            <ProductCarousel products={products} />
+            <ProductGrid products={products} />
+          </>
         ) : (
-          <p>No products found.</p>
+          !loading && <p>No products found</p>
         )}
 
-        {analysisResults && analysisResults.length > 0 && (
-          <AnalysisResults analysisResults={analysisResults} />
-        )}
+        <AnalysisResults analysisResults={analysisResults} />
       </div>
     </>
   );

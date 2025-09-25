@@ -1,33 +1,43 @@
-// Converts a File to Base64
-const toBase64 = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result.split(",")[1]); // strip "data:*/*;base64,"
-    reader.onerror = (error) => reject(error);
-  });
-
-// Upload image and call analyzeImage function
-export const handleUpload = async (file, setProductName, setError, setLoading, setProductData, setAnalysisResults) => {
-  setLoading(true);
-  setError(null);
-
+// utils/handleUploadAndAnalyze.js
+export const handleUpload = async (
+  imageFile,
+  setProductName,
+  setError,
+  setLoading,
+  setProducts,
+  setAnalysisResults
+) => {
   try {
-    const imageBase64 = await toBase64(file);
+    setLoading(true);
+    setError(null);
 
-    const response = await fetch("/.netlify/functions/analyzeImage", {
-      method: "POST",
-      body: JSON.stringify({ imageBase64 }),
-    });
+    // Convert image to base64
+    const reader = new FileReader();
+    reader.readAsDataURL(imageFile);
+    reader.onloadend = async () => {
+      const base64Data = reader.result.split(",")[1]; // Remove "data:image/...;base64," prefix
 
-    const data = await response.json();
+      const response = await fetch("/.netlify/functions/analyzeImage", {
+        method: "POST",
+        body: JSON.stringify({ imageBase64: base64Data }),
+        headers: { "Content-Type": "application/json" },
+      });
 
-    setProductName(data.itemName || "Unknown item");
-    setProductData(data.products || []);
-    setAnalysisResults(data.visionLabels || []);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Error analyzing image");
+        setProducts([]);
+        return;
+      }
+
+      setProductName(data.itemName || "Unknown item");
+      setProducts(data.products || []);
+      setAnalysisResults(data.visionLabels || []);
+    };
   } catch (err) {
     console.error("handleUpload error:", err);
-    setError(err.message || "Error analyzing image");
+    setError(err.message || "Error uploading image");
   } finally {
     setLoading(false);
   }
