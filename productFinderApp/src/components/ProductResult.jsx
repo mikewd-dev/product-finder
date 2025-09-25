@@ -5,7 +5,7 @@ import { useDrag } from "react-dnd";
 import { useDrop } from "react-dnd";
 import { ItemTypes } from "./ItemTypes";
 import ProductCarousel from "./ProductCarousel";
-import { handleUploadAndAnalyze } from "./utils/handleUploadAndAnalyze";
+import { handleUpload } from "./utils/handleUploadAndAnalyze";
 import AnalysisResults from "./AnalysisResultsDisplay";
 
 const ProductResult = ({ inputImageFile = null }) => {
@@ -20,7 +20,7 @@ const ProductResult = ({ inputImageFile = null }) => {
 
   // Wrapper for upload + analyze
   const handleImageUploadWrapper = async (file) => {
-    handleUploadAndAnalyze(
+    handleUpload (
       file,
       setProductName,
       setError,
