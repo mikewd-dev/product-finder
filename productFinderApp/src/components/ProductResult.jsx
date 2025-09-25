@@ -1,49 +1,35 @@
 import React, { useState, useRef } from "react";
 import DragNDrop from "./DragNDrop";
 import ProductGrid from "./ProductGrid";
+import ProductCarousel from "./ProductCarousel";
+import AnalysisResults from "./AnalysisResultsDisplay";
+import { handleUpload } from "./utils/handleUploadAndAnalyze";
 import { useDrag, useDrop } from "react-dnd";
 import { ItemTypes } from "./ItemTypes";
-import ProductCarousel from "./ProductCarousel";
-import { handleUpload } from "./utils/handleUploadAndAnalyze";
-import AnalysisResults from "./AnalysisResultsDisplay";
 
 const ProductResult = ({ inputImageFile = null }) => {
   const [productName, setProductName] = useState("");
   const [products, setProducts] = useState([]);
+  const [analysisResults, setAnalysisResults] = useState([]);
+  const [imageFile, setImageFile] = useState(inputImageFile);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [imageFile, setImageFile] = useState(inputImageFile);
-  const [analysisResults, setAnalysisResults] = useState([]);
 
-  const imageFileRef = useRef(imageFile);
-
-  const handleImageUploadWrapper = (file) => {
-    handleUpload(
-      file,
-      setProductName,
-      setError,
-      setLoading,
-      setProducts,
-      setAnalysisResults
-    );
+  const handleImageUploadWrapper = async (file) => {
+    const results = await handleUpload(file, setProductName, setError, setLoading);
+    setProducts(results);
+    setAnalysisResults([]); // optionally populate if you want vision labels
   };
 
   const handleImageDrop = (item) => {
-    try {
-      setImageFile(item.imageFile);
-      handleImageUploadWrapper(item.imageFile);
-    } catch (err) {
-      setError(err.message || "Error processing image");
-      console.error("Error processing image:", err);
-    }
+    setImageFile(item.imageFile);
+    handleImageUploadWrapper(item.imageFile);
   };
 
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.IMAGE,
     item: { type: ItemTypes.IMAGE, imageFile },
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
+    collect: (monitor) => ({ isDragging: !!monitor.isDragging() }),
   });
 
   const [{ isOver, canDrop }, drop] = useDrop({
@@ -74,7 +60,7 @@ const ProductResult = ({ inputImageFile = null }) => {
 
       <div ref={drop}>
         {loading && <p>Loading...</p>}
-        {error && <p>Error: {error}</p>}
+        {error && <p style={{ color: "red" }}>Error: {error}</p>}
 
         {products.length > 0 ? (
           <>
