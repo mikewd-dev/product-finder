@@ -10,6 +10,7 @@ import AnalysisResults from "./AnalysisResultsDisplay";
 
 const ProductResult = ({ inputImageFile = null }) => {
   const [productName, setProductName] = useState("");
+  const [ visionLabel, setVisionLabel] = useState("");
   const [productData, setProductData] = useState(null);
   const [visionData, setVisionData] = useState(null)
   const [loading, setLoading] = useState(false);
