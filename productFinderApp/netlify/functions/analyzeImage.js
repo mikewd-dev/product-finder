@@ -40,8 +40,8 @@ exports.handler = async function (event) {
     const candidateLabels = extractCandidateLabels(result);
 
     // Query RapidAPI using each candidate label
-    const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
-    const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
+    const rapidHost = process.env.RAPIDAPI_HOST;
+    const rapidKey = process.env.RAPIDAPI_KEY;
 
     let products = [];
     let usedLabel = "Unknown item";
