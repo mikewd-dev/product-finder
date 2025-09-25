@@ -1,20 +1,20 @@
 {
 	"geolocation": {
 		"data": {
-			"city": "Amsterdam",
+			"city": "London",
 			"country": {
-				"code": "NL",
-				"name": "The Netherlands"
+				"code": "GB",
+				"name": "United Kingdom"
 			},
 			"subdivision": {
-				"code": "NH",
-				"name": "North Holland"
+				"code": "ENG",
+				"name": "England"
 			},
-			"timezone": "Europe/Amsterdam",
-			"latitude": 52.3759,
-			"longitude": 4.8975,
-			"postalCode": "1012"
+			"timezone": "Europe/London",
+			"latitude": 51.5081,
+			"longitude": -0.1278,
+			"postalCode": "EC1N"
 		},
-		"timestamp": 1758659349878
+		"timestamp": 1758803798558
 	}
 }

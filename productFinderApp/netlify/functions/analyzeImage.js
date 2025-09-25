@@ -18,7 +18,8 @@ const extractCandidateLabels = (visionResponse) => {
 };
 
 exports.handler = async function (event) {
-  try {
+  try {console.log("RapidAPI host:", process.env.RAPIDAPI_HOST);
+console.log("RapidAPI key:", process.env.RAPIDAPI_KEY ? "SET" : "MISSING");
     const { imageBase64 } = JSON.parse(event.body || "{}");
     if (!imageBase64) {
       return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
