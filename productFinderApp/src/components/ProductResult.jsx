@@ -3,22 +3,27 @@ import DragNDrop from "./DragNDrop";
 import ProductGrid from "./ProductGrid";
 import ProductCarousel from "./ProductCarousel";
 import AnalysisResults from "./AnalysisResultsDisplay";
-import { handleUpload } from "./utils/handleUploadAndAnalyze";
 import { useDrag, useDrop } from "react-dnd";
 import { ItemTypes } from "./ItemTypes";
+import { handleUpload } from "./utils/handleUploadAndAnalyze";
 
 const ProductResult = ({ inputImageFile = null }) => {
   const [productName, setProductName] = useState("");
   const [products, setProducts] = useState([]);
-  const [analysisResults, setAnalysisResults] = useState([]);
-  const [imageFile, setImageFile] = useState(inputImageFile);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [imageFile, setImageFile] = useState(inputImageFile);
+  const [analysisResults, setAnalysisResults] = useState([]);
 
-  const handleImageUploadWrapper = async (file) => {
-    const results = await handleUpload(file, setProductName, setError, setLoading);
-    setProducts(results);
-    setAnalysisResults([]); // optionally populate if you want vision labels
+  const handleImageUploadWrapper = (file) => {
+    handleUpload(
+      file,
+      setProductName,
+      setError,
+      setLoading,
+      setProducts,
+      setAnalysisResults
+    );
   };
 
   const handleImageDrop = (item) => {

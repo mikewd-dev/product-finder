@@ -1,9 +1,10 @@
-// utils/handleUploadAndAnalyze.js
 export const handleUpload = async (
   imageFile,
   setProductName,
   setError,
-  setLoading
+  setLoading,
+  setProducts,
+  setAnalysisResults
 ) => {
   setLoading(true);
   setError(null);
@@ -12,59 +13,46 @@ export const handleUpload = async (
     // Convert image to Base64
     const base64Data = await new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        if (!reader.result) return reject("Failed to read image file");
-        resolve(reader.result.split(",")[1]);
-      };
-      reader.onerror = () => reject("Error reading image file");
       reader.readAsDataURL(imageFile);
+      reader.onloadend = () => {
+        if (reader.result) {
+          resolve(reader.result.split(",")[1]);
+        } else {
+          reject(new Error("Failed to read image file"));
+        }
+      };
+      reader.onerror = () => reject(new Error("Error reading image file"));
     });
 
-    // Call Netlify function
     const response = await fetch("/.netlify/functions/analyzeImage", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageBase64: base64Data }),
+      headers: { "Content-Type": "application/json" },
     });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Function error: ${text}`);
-    }
 
     const data = await response.json();
 
-    if (!data.products || data.products.length === 0) {
-      setError("No products found for this item.");
-      return [];
+    if (!response.ok) {
+      setError(data.error || "Error analyzing image");
+      setProducts([]);
+      setAnalysisResults([]);
+      setProductName("Unknown item");
+      return;
     }
 
-    setProductName(data.itemName || "Unknown item");
+    console.log("Server response:", data);
 
-    // Return products for rendering
-    return data.products;
+    // ✅ Use the returned fields directly
+    setProductName(data.itemName || "Unknown item");
+    setProducts(data.products || []);
+    setAnalysisResults(data.visionLabels || []);
   } catch (err) {
     console.error("handleUpload error:", err);
-    setError(err.message || String(err));
-    return [];
+    setError(err.message || "Error uploading image");
+    setProducts([]);
+    setAnalysisResults([]);
+    setProductName("Unknown item");
   } finally {
     setLoading(false);
   }
-};
-
-// Optional helper: format products for frontend
-export const modifyData = (products = []) => {
-  if (!Array.isArray(products)) return [];
-  return products.map((product) => ({
-    name: product?.product_title,
-    description: product?.product_description,
-    retailer: product?.offer?.store_name,
-    rating: product?.offer?.store_rating,
-    price: product?.offer?.price ? product.offer.price.replace(/£/g, "") : undefined,
-    shipping: product?.offer?.shipping,
-    link: product?.offer?.offer_page_url,
-    images: Array.isArray(product?.product_photos)
-      ? product.product_photos
-      : [product?.product_photos].filter(Boolean),
-  }));
 };
