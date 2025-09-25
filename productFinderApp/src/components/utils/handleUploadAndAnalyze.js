@@ -1,33 +1,32 @@
-export const handleUploadAndAnalyze = async (file) => {
-  if (!file) return null;
-
+// This takes an image file, converts to base64, sends to Netlify function
+export const handleUpload = async (file) => {
   try {
-    const reader = new FileReader();
+    const base64Image = await convertToBase64(file);
 
-    return new Promise((resolve, reject) => {
-      reader.onloadend = async () => {
-        const base64 = reader.result.split(",")[1];
-
-        try {
-          const response = await fetch("/.netlify/functions/analyzeImage", {
-            method: "POST",
-            body: JSON.stringify({ imageBase64: base64 }),
-          });
-
-          const data = await response.json();
-          console.log("Vision API response:", data); // ✅ You had this before
-
-          resolve(data);
-        } catch (err) {
-          reject(err);
-        }
-      };
-
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+    const response = await fetch("/.netlify/functions/analyzeImage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: base64Image }),
     });
+
+    if (!response.ok) {
+      throw new Error("Failed to analyze image");
+    }
+
+    const data = await response.json();
+    return data; // contains visionData (labels + texts)
   } catch (error) {
-    console.error("handleUploadAndAnalyze error:", error);
+    console.error("handleUpload error:", error);
     return null;
   }
+};
+
+// Helper to turn file into base64
+const convertToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result.split(",")[1]); // strip prefix
+    reader.onerror = (error) => reject(error);
+  });
 };
