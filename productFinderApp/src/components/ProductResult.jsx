@@ -25,6 +25,7 @@ const ProductResult = ({ inputImageFile = null }) => {
     handleUpload (
       file,
       setProductName,
+      setVisionLabel, 
       setVisionData,
       setError,
       setLoading,
