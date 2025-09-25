@@ -41,6 +41,7 @@ const NETLIFY_FUNCTIONS_URL = import.meta.env.VITE_NETLIFY_FUNCTIONS_URL;
       const products = await handleImage(
         selectedImage,
         setProductName,
+        setVisionLabel,
         setError,
         setLoading
       );

@@ -59,7 +59,7 @@ exports.handler = async (event) => {
 
     let products = [];
     let itemName = "Unknown item";
-    let visionLabels = [...uniqueNames];
+    let visionLabels = [];
 
     // Try each name until we get results
     for (const name of uniqueNames) {
@@ -79,14 +79,14 @@ exports.handler = async (event) => {
       if (data.products?.length) {
         products = data.products;
         itemName = name;
-        visionLabels = uniqueNames
+        visionLabels = data.visionLabels;
         break;
       }
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ itemName, products, visionLabels: uniqueNames }),
+      body: JSON.stringify({ itemName, products, visionLabels }),
     };
   } catch (err) {
     console.error("analyzeImage error:", err);

@@ -1,4 +1,4 @@
-export const fetchProductsFromImage = async (imageFile, setProductName, setError, setLoading) => {
+export const fetchProductsFromImage = async (imageFile, setProductName, setVisionLabel, setError, setLoading) => {
   try {
     setLoading(true);
 
@@ -33,6 +33,8 @@ export const fetchProductsFromImage = async (imageFile, setProductName, setError
 
     // Set item name
     setProductName(analyzeResponse.itemName || "Unknown item");
+    // Set vision label
+    setVisionLabel(analyzeResponse.visionLabel || "Cannot be recognised from label")
 
     if (!analyzeResponse.products || analyzeResponse.products.length === 0) {
       setError("No products found for this item.");
