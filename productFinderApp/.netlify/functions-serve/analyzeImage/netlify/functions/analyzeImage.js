@@ -15885,25 +15885,25 @@ var require_codegen = __commonJS({
 var require_fetch = __commonJS({
   "node_modules/@protobufjs/fetch/index.js"(exports2, module2) {
     "use strict";
-    module2.exports = fetch;
+    module2.exports = fetch2;
     var asPromise = require_aspromise();
     var inquire2 = require_inquire();
     var fs = inquire2("fs");
-    function fetch(filename, options, callback) {
+    function fetch2(filename, options, callback) {
       if (typeof options === "function") {
         callback = options;
         options = {};
       } else if (!options)
         options = {};
       if (!callback)
-        return asPromise(fetch, this, filename, options);
+        return asPromise(fetch2, this, filename, options);
       if (!options.xhr && fs && fs.readFile)
         return fs.readFile(filename, function fetchReadFileCallback(err, contents) {
-          return err && typeof XMLHttpRequest !== "undefined" ? fetch.xhr(filename, options, callback) : err ? callback(err) : callback(null, options.binary ? contents : contents.toString("utf8"));
+          return err && typeof XMLHttpRequest !== "undefined" ? fetch2.xhr(filename, options, callback) : err ? callback(err) : callback(null, options.binary ? contents : contents.toString("utf8"));
         });
-      return fetch.xhr(filename, options, callback);
+      return fetch2.xhr(filename, options, callback);
     }
-    fetch.xhr = function fetch_xhr(filename, options, callback) {
+    fetch2.xhr = function fetch_xhr(filename, options, callback) {
       var xhr = new XMLHttpRequest();
       xhr.onreadystatechange = function fetchOnReadyStateChange() {
         if (xhr.readyState !== 4)
@@ -17680,12 +17680,12 @@ var require_root = __commonJS({
             if (parsed.imports) {
               for (; i2 < parsed.imports.length; ++i2)
                 if (resolved2 = getBundledFileName(parsed.imports[i2]) || self2.resolvePath(filename2, parsed.imports[i2]))
-                  fetch(resolved2);
+                  fetch2(resolved2);
             }
             if (parsed.weakImports) {
               for (i2 = 0; i2 < parsed.weakImports.length; ++i2)
                 if (resolved2 = getBundledFileName(parsed.weakImports[i2]) || self2.resolvePath(filename2, parsed.weakImports[i2]))
-                  fetch(resolved2, true);
+                  fetch2(resolved2, true);
             }
           }
         } catch (err) {
@@ -17694,7 +17694,7 @@ var require_root = __commonJS({
         if (!sync && !queued)
           finish(null, self2);
       }
-      function fetch(filename2, weak) {
+      function fetch2(filename2, weak) {
         filename2 = getBundledFileName(filename2) || filename2;
         if (self2.files.indexOf(filename2) > -1)
           return;
@@ -17743,7 +17743,7 @@ var require_root = __commonJS({
         filename = [filename];
       for (var i = 0, resolved; i < filename.length; ++i)
         if (resolved = self2.resolvePath("", filename[i]))
-          fetch(resolved);
+          fetch2(resolved);
       if (sync)
         return self2;
       if (!queued)
@@ -32051,12 +32051,12 @@ var require_lib2 = __commonJS({
       const dest = new URL$1(destination).protocol;
       return orig === dest;
     };
-    function fetch(url, opts) {
-      if (!fetch.Promise) {
+    function fetch2(url, opts) {
+      if (!fetch2.Promise) {
         throw new Error("native promise missing, set fetch.Promise to your favorite alternative");
       }
-      Body.Promise = fetch.Promise;
-      return new fetch.Promise(function(resolve, reject) {
+      Body.Promise = fetch2.Promise;
+      return new fetch2.Promise(function(resolve, reject) {
         const request = new Request(url, opts);
         const options = getNodeRequestOptions(request);
         const send = (options.protocol === "https:" ? https : http).request;
@@ -32127,7 +32127,7 @@ var require_lib2 = __commonJS({
         req.on("response", function(res) {
           clearTimeout(reqTimeout);
           const headers = createHeadersLenient(res.headers);
-          if (fetch.isRedirect(res.statusCode)) {
+          if (fetch2.isRedirect(res.statusCode)) {
             const location = headers.get("Location");
             let locationURL = null;
             try {
@@ -32189,7 +32189,7 @@ var require_lib2 = __commonJS({
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
                 }
-                resolve(fetch(new Request(locationURL, requestOpts)));
+                resolve(fetch2(new Request(locationURL, requestOpts)));
                 finalize();
                 return;
             }
@@ -32281,11 +32281,11 @@ var require_lib2 = __commonJS({
         stream.end();
       }
     }
-    fetch.isRedirect = function(code) {
+    fetch2.isRedirect = function(code) {
       return code === 301 || code === 302 || code === 303 || code === 307 || code === 308;
     };
-    fetch.Promise = global.Promise;
-    module2.exports = exports2 = fetch;
+    fetch2.Promise = global.Promise;
+    module2.exports = exports2 = fetch2;
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = exports2;
     exports2.Headers = Headers;
@@ -33710,7 +33710,7 @@ var require_gaxios = __commonJS({
     var common_1 = require_common2();
     var retry_1 = require_retry();
     var https_proxy_agent_1 = require_dist2();
-    var fetch = hasFetch() ? window.fetch : node_fetch_1.default;
+    var fetch2 = hasFetch() ? window.fetch : node_fetch_1.default;
     function hasWindow() {
       return typeof window !== "undefined" && !!window;
     }
@@ -33784,7 +33784,7 @@ var require_gaxios = __commonJS({
         return this._request(opts);
       }
       async _defaultAdapter(opts) {
-        const fetchImpl = opts.fetchImplementation || fetch;
+        const fetchImpl = opts.fetchImplementation || fetch2;
         const res = await fetchImpl(opts.url, opts);
         const data = await this.getResponseData(opts, res);
         return this.translateResponse(opts, res, data);
@@ -56016,12 +56016,12 @@ var require_lib4 = __commonJS({
       const dest = new URL$1(destination).protocol;
       return orig === dest;
     };
-    function fetch(url, opts) {
-      if (!fetch.Promise) {
+    function fetch2(url, opts) {
+      if (!fetch2.Promise) {
         throw new Error("native promise missing, set fetch.Promise to your favorite alternative");
       }
-      Body.Promise = fetch.Promise;
-      return new fetch.Promise(function(resolve, reject) {
+      Body.Promise = fetch2.Promise;
+      return new fetch2.Promise(function(resolve, reject) {
         const request = new Request(url, opts);
         const options = getNodeRequestOptions(request);
         const send = (options.protocol === "https:" ? https : http).request;
@@ -56092,7 +56092,7 @@ var require_lib4 = __commonJS({
         req.on("response", function(res) {
           clearTimeout(reqTimeout);
           const headers = createHeadersLenient(res.headers);
-          if (fetch.isRedirect(res.statusCode)) {
+          if (fetch2.isRedirect(res.statusCode)) {
             const location = headers.get("Location");
             let locationURL = null;
             try {
@@ -56154,7 +56154,7 @@ var require_lib4 = __commonJS({
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
                 }
-                resolve(fetch(new Request(locationURL, requestOpts)));
+                resolve(fetch2(new Request(locationURL, requestOpts)));
                 finalize();
                 return;
             }
@@ -56246,11 +56246,11 @@ var require_lib4 = __commonJS({
         stream.end();
       }
     }
-    fetch.isRedirect = function(code) {
+    fetch2.isRedirect = function(code) {
       return code === 301 || code === 302 || code === 303 || code === 307 || code === 308;
     };
-    fetch.Promise = global.Promise;
-    module2.exports = exports2 = fetch;
+    fetch2.Promise = global.Promise;
+    module2.exports = exports2 = fetch2;
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = exports2;
     exports2.Headers = Headers;
@@ -57068,7 +57068,7 @@ var require_fallbackServiceStub = __commonJS({
     var streamArrayParser_1 = require_streamArrayParser();
     var stream_1 = require("stream");
     function generateServiceStub(rpcs, protocol, servicePath, servicePort, authClient, requestEncoder, responseDecoder, numericEnums) {
-      const fetch = (0, featureDetection_1.hasWindowFetch)() ? window.fetch : node_fetch_1.default;
+      const fetch2 = (0, featureDetection_1.hasWindowFetch)() ? window.fetch : node_fetch_1.default;
       const serviceStub = {
         // close method should close all cancel controllers. If this feature request in the future, we can have a cancelControllerFactory that tracks created cancel controllers, and abort them all in close method.
         close: () => {
@@ -57113,7 +57113,7 @@ var require_fallbackServiceStub = __commonJS({
             if (fetchParameters.method === "GET" || fetchParameters.method === "DELETE") {
               delete fetchRequest["body"];
             }
-            return fetch(url, fetchRequest);
+            return fetch2(url, fetchRequest);
           }).then((response) => {
             if (response.ok && rpc.responseStream) {
               (0, stream_1.pipeline)(response.body, streamArrayParser, (err) => {
@@ -186884,9 +186884,31 @@ exports.handler = async function(event) {
     const labels = result.labelAnnotations?.map((l) => l.description) || [];
     const texts = result.textAnnotations?.map((t) => t.description) || [];
     const combined = [...texts, ...labels];
+    let products = [];
+    if (combined.length > 0) {
+      const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
+      const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
+      if (rapidHost && rapidKey) {
+        const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(combined[0])}`;
+        const rapidRes = await fetch(rapidApiUrl, {
+          headers: {
+            "X-RapidAPI-Key": rapidKey,
+            "X-RapidAPI-Host": rapidHost
+          }
+        });
+        const rapidData = await rapidRes.json();
+        products = rapidData.products || [];
+      }
+    }
+    if (products.length === 0) {
+      products = combined.map((name) => ({
+        name,
+        source: "vision"
+      }));
+    }
     return {
       statusCode: 200,
-      body: JSON.stringify({ labels, texts, combined })
+      body: JSON.stringify({ products })
     };
   } catch (error) {
     console.error(error);
