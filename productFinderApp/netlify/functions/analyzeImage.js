@@ -72,7 +72,7 @@ exports.handler = async (event) => {
 
       const data = await rapidRes.json();
 
-      if (data.data?.products?.length) {
+      if (data.products?.length) {
         products = data.products;
         itemName = name;
         break;
