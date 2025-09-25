@@ -1,4 +1,4 @@
-export const fetchProductsFromImage = async (imageFile, setProductName, setVisionLabel, setError, setLoading) => {
+/* export const fetchProductsFromImage = async (imageFile, setProductName, setVisionLabel, setError, setLoading) => {
   try {
     setLoading(true);
 
@@ -49,4 +49,4 @@ export const fetchProductsFromImage = async (imageFile, setProductName, setVisio
   } finally {
     setLoading(false);
   }
-};
+}; */

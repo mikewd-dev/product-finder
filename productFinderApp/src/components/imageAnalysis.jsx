@@ -11,9 +11,7 @@ const ImageAnalysis = () => {
   const [analysisResults, setAnalysisResults] = useState(null);
 
   const [productName, setProductName] = useState("");
-  const [visionLabel, setVisionLabel] = useState("");
   const [productData, setProductData] = useState(null);
-  const [visionData, setVisionData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -43,7 +41,6 @@ const NETLIFY_FUNCTIONS_URL = import.meta.env.VITE_NETLIFY_FUNCTIONS_URL;
       const products = await handleImage(
         selectedImage,
         setProductName,
-        setVisionLabel,
         setError,
         setLoading
       );

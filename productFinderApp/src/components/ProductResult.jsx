@@ -10,9 +10,7 @@ import AnalysisResults from "./AnalysisResultsDisplay";
 
 const ProductResult = ({ inputImageFile = null }) => {
   const [productName, setProductName] = useState("");
-  const [ visionLabel, setVisionLabel] = useState("");
   const [productData, setProductData] = useState(null);
-  const [visionData, setVisionData] = useState(null)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [imageFile, setImageFile] = useState(inputImageFile);
@@ -25,8 +23,6 @@ const ProductResult = ({ inputImageFile = null }) => {
     handleUpload (
       file,
       setProductName,
-      setVisionLabel, 
-      setVisionData,
       setError,
       setLoading,
       setProductData,

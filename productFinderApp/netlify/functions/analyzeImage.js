@@ -1,6 +1,5 @@
 const vision = require("@google-cloud/vision");
 
-// Decode Google credentials
 const decodedCredentials = Buffer.from(
   process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
   "base64"
@@ -12,84 +11,40 @@ const client = new vision.ImageAnnotatorClient({
 
 exports.handler = async (event) => {
   try {
-    if (!event.body) {
-      return { statusCode: 400, body: JSON.stringify({ error: "No request body" }) };
-    }
-
     const { imageBase64 } = JSON.parse(event.body);
+
     if (!imageBase64) {
-      return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "No image provided" }),
+      };
     }
 
-    const imageBuffer = Buffer.from(imageBase64, "base64");
-
-    // Call Vision API with multiple features
-    const [result] = await client.annotateImage({
-      image: { content: imageBuffer.toString("base64") },
-      features: [
-        { type: "WEB_DETECTION", maxResults: 5 },
-        { type: "LABEL_DETECTION", maxResults: 5 },
-        { type: "TEXT_DETECTION", maxResults: 5 },
-      ],
+    const [result] = await client.labelDetection({
+      image: { content: imageBase64 },
     });
 
-    // Gather all possible names
-    const namesToTry = [];
+    const labels = result.labelAnnotations.map((label) => label.description);
 
-    // 1️⃣ Web Detection
-    if (result.webDetection?.bestGuessLabels?.length) {
-      result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
-    }
+    const [textResult] = await client.textDetection({
+      image: { content: imageBase64 },
+    });
 
-    // 2️⃣ Label Annotations
-    if (result.labelAnnotations?.length) {
-      result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
-    }
-
-    // 3️⃣ Text Detection
-    if (result.textAnnotations?.length) {
-      result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
-    }
-
-    const uniqueNames = [...new Set(namesToTry)];
-
-    // RapidAPI credentials
-    const rapidHost = process.env.RAPIDAPI_HOST;
-    const rapidKey = process.env.RAPIDAPI_KEY;
-
-    let products = [];
-    let itemName = "Unknown item";
-    let visionLabels = [];
-
-    // Try each name until we get results
-    for (const name of uniqueNames) {
-      const rapidRes = await fetch(
-        `https://${rapidHost}/products/search?query=${encodeURIComponent(name)}`,
-        {
-          headers: {
-            "X-RapidAPI-Key": rapidKey,
-            "X-RapidAPI-Host": rapidHost,
-          },
-        }
-      );
-
-      if (!rapidRes.ok) continue;
-
-      const data = await rapidRes.json();
-      if (data.products?.length) {
-        products = data.products;
-        itemName = name;
-        visionLabels = data.visionLabels;
-        break;
-      }
-    }
+    const texts = textResult.textAnnotations.map((t) => t.description);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ itemName, products, visionLabels }),
+      body: JSON.stringify({
+        labels,
+        texts,
+        combined: [...labels, ...texts],
+      }),
     };
-  } catch (err) {
-    console.error("analyzeImage error:", err);
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+  } catch (error) {
+    console.error("analyzeImage error:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: error.message }),
+    };
   }
 };
