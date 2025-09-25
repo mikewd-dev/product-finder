@@ -20,7 +20,6 @@ exports.handler = async function (event) {
       };
     }
 
-    // Prepare image source
     const image = imageUrl
       ? { source: { imageUri: imageUrl } }
       : { content: Buffer.from(imageBase64, "base64") };
@@ -28,11 +27,10 @@ exports.handler = async function (event) {
     const request = {
       image,
       features: [
-        { type: "PRODUCT_SEARCH", maxResults: 10 },
         { type: "LABEL_DETECTION", maxResults: 5 },
-        { type: "LOGO_DETECTION", maxResults: 5 },
         { type: "TEXT_DETECTION", maxResults: 5 },
         { type: "WEB_DETECTION", maxResults: 5 },
+        { type: "PRODUCT_SEARCH", maxResults: 5},
       ],
     };
 
@@ -42,14 +40,17 @@ exports.handler = async function (event) {
     const texts = result.textAnnotations?.map(t => t.description) || [];
     const combined = [...texts, ...labels];
 
-    // 🔑 Attempt RapidAPI only if we got something
-    let products = [];
-    if (combined.length > 0) {
-      const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
-      const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
+    // Best guess = first combined value or fallback
+    const itemName = combined[0] || "Unknown item";
 
-      if (rapidHost && rapidKey) {
-        const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(combined[0])}`;
+    // Try RapidAPI
+    let products = [];
+    const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
+    const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
+
+    if (rapidHost && rapidKey && itemName !== "Unknown item") {
+      try {
+        const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
         const rapidRes = await fetch(rapidApiUrl, {
           headers: {
             "X-RapidAPI-Key": rapidKey,
@@ -58,10 +59,12 @@ exports.handler = async function (event) {
         });
         const rapidData = await rapidRes.json();
         products = rapidData.products || [];
+      } catch (e) {
+        console.warn("RapidAPI fetch failed:", e.message);
       }
     }
 
-    // 🔄 Normalize output so frontend *always* gets `products`
+    // Fallback to Vision-derived pseudo products
     if (products.length === 0) {
       products = combined.map(name => ({
         name,
@@ -71,10 +74,10 @@ exports.handler = async function (event) {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ products }),
+      body: JSON.stringify({ itemName, products, rawVision: { labels, texts, combined } }),
     };
   } catch (error) {
-    console.error(error);
+    console.error("analyzeImage error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message }),

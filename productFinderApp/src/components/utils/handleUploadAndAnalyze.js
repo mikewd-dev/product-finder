@@ -53,7 +53,15 @@ export const handleUploadAndAnalyze = async (
         const response = await fetch("/.netlify/functions/analyzeImage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64Image, features: [{ type: "WEB_DETECTION" }] }),
+          body: JSON.stringify({ imageBase64: base64Image, 
+            features: 
+              [
+               { type: "WEB_DETECTION" },
+               { type: "LABEL_DETECTION"},
+               { type: "TEXT_DETECTION" },
+               { type: "PRODUCT_SEARCH" },
+              ]
+            }),
         });
 
         if (!response.ok) {
