@@ -1,8 +1,7 @@
 import React, { useState, useRef } from "react";
 import DragNDrop from "./DragNDrop";
 import ProductGrid from "./ProductGrid";
-import { useDrag } from "react-dnd";
-import { useDrop } from "react-dnd";
+import { useDrag, useDrop } from "react-dnd";
 import { ItemTypes } from "./ItemTypes";
 import ProductCarousel from "./ProductCarousel";
 import { handleUpload } from "./utils/handleUploadAndAnalyze";
@@ -10,17 +9,17 @@ import AnalysisResults from "./AnalysisResultsDisplay";
 
 const ProductResult = ({ inputImageFile = null }) => {
   const [productName, setProductName] = useState("");
-  const [productData, setProductData] = useState(null);
+  const [productData, setProductData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [imageFile, setImageFile] = useState(inputImageFile);
-  const [analysisResults, setAnalysisResults] = useState(null);
+  const [analysisResults, setAnalysisResults] = useState([]);
 
   const imageFileRef = useRef(imageFile);
 
   // Wrapper for upload + analyze
   const handleImageUploadWrapper = async (file) => {
-    handleUpload (
+    handleUpload(
       file,
       setProductName,
       setError,
@@ -30,7 +29,7 @@ const ProductResult = ({ inputImageFile = null }) => {
     );
   };
 
-  // Handle image drop (no conversion here!)
+  // Handle image drop (no conversion here)
   const handleImageDrop = async (item) => {
     try {
       setImageFile(item.imageFile);
@@ -52,7 +51,7 @@ const ProductResult = ({ inputImageFile = null }) => {
 
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: ItemTypes.IMAGE,
-    drop: handleImageDrop, // ✅ Pass function, not object
+    drop: handleImageDrop,
     collect: (monitor) => ({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
@@ -78,14 +77,21 @@ const ProductResult = ({ inputImageFile = null }) => {
 
       <div ref={drop}>
         {loading && <p>Loading...</p>}
-        {error && <p>Error: {error}</p>}
-        {productData && Array.isArray(productData) && productData.length > 0 && (
+        {error && <p style={{ color: "red" }}>Error: {error}</p>}
+
+        {productData && productData.length > 0 ? (
           <div>
+            <h2>Products:</h2>
             <ProductCarousel products={productData} />
             <ProductGrid products={productData} />
           </div>
+        ) : (
+          <p>No products found.</p>
         )}
-        <AnalysisResults analysisResults={analysisResults} />
+
+        {analysisResults && analysisResults.length > 0 && (
+          <AnalysisResults analysisResults={analysisResults} />
+        )}
       </div>
     </>
   );

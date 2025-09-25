@@ -33,7 +33,7 @@ exports.handler = async (event) => {
       ],
     });
 
-    // Gather all possible names from Vision API
+    // Gather all possible names
     const namesToTry = [];
 
     if (result.webDetection?.bestGuessLabels?.length) {
@@ -57,10 +57,9 @@ exports.handler = async (event) => {
     let products = [];
     let itemName = "Unknown item";
 
-    // Try each name until we get results from RapidAPI
     for (const name of uniqueNames) {
       const rapidRes = await fetch(
-        `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(name)}&country=gb&language=en`,
+        `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(name)}&country=gb&language=en&page=1&limit=10&sort_by=BEST_MATCH&product_condition=ANY&return_filters=false`,
         {
           headers: {
             "X-RapidAPI-Key": rapidKey,
@@ -72,8 +71,9 @@ exports.handler = async (event) => {
       if (!rapidRes.ok) continue;
 
       const data = await rapidRes.json();
+
       if (data.data?.products?.length) {
-        products = data.data.products;
+        products = data.data.products; // ✅ correct path
         itemName = name;
         break;
       }
