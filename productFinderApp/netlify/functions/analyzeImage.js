@@ -59,6 +59,7 @@ exports.handler = async (event) => {
 
     let products = [];
     let itemName = "Unknown item";
+    let visionLabels = [...uniqueNames];
 
     // Try each name until we get results
     for (const name of uniqueNames) {
@@ -78,6 +79,7 @@ exports.handler = async (event) => {
       if (data.products?.length) {
         products = data.products;
         itemName = name;
+        visionLabels = uniqueNames
         break;
       }
     }
