@@ -50,33 +50,28 @@ exports.handler = async (event) => {
 
     const uniqueNames = [...new Set(namesToTry)];
 
+    // Pick the first label as the best guess
+    const itemName = uniqueNames[0] || "Unknown item";
+
     // RapidAPI credentials
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    let products = [];
-    let itemName = "Unknown item";
-
-    for (const name of uniqueNames) {
-      const rapidRes = await fetch(
-        `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(name)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`,
-        {
-          headers: {
-            "X-RapidAPI-Key": rapidKey,
-            "X-RapidAPI-Host": rapidHost,
-          },
-        }
-      );
-
-      if (!rapidRes.ok) continue;
-
-      const data = await rapidRes.json();
-
-      if (data.products?.length) {
-        products = data.products;
-        itemName = name;
-        break;
+    // Make only 1 RapidAPI call
+    const rapidRes = await fetch(
+      `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`,
+      {
+        headers: {
+          "X-RapidAPI-Key": rapidKey,
+          "X-RapidAPI-Host": rapidHost,
+        },
       }
+    );
+
+    let products = [];
+    if (rapidRes.ok) {
+      const data = await rapidRes.json();
+      if (data.products?.length) products = data.products;
     }
 
     return {
