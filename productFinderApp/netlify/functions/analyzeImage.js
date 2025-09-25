@@ -60,7 +60,7 @@ exports.handler = async (event) => {
     // Try each name until we get results from RapidAPI
     for (const name of uniqueNames) {
       const rapidRes = await fetch(
-        `https://${rapidHost}/products/search?q=${encodeURIComponent(name)}&country=gb&language=en`,
+        `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(name)}&country=gb&language=en`,
         {
           headers: {
             "X-RapidAPI-Key": rapidKey,
