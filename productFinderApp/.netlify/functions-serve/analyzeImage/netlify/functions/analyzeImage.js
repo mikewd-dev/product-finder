@@ -11521,8 +11521,8 @@ var require_call_credentials = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.CallCredentials = void 0;
     var metadata_1 = require_metadata();
-    function isCurrentOauth2Client(client) {
-      return "getRequestHeaders" in client && typeof client.getRequestHeaders === "function";
+    function isCurrentOauth2Client(client2) {
+      return "getRequestHeaders" in client2 && typeof client2.getRequestHeaders === "function";
     }
     var CallCredentials = class _CallCredentials {
       /**
@@ -15885,25 +15885,25 @@ var require_codegen = __commonJS({
 var require_fetch = __commonJS({
   "node_modules/@protobufjs/fetch/index.js"(exports2, module2) {
     "use strict";
-    module2.exports = fetch2;
+    module2.exports = fetch;
     var asPromise = require_aspromise();
     var inquire2 = require_inquire();
     var fs = inquire2("fs");
-    function fetch2(filename, options, callback) {
+    function fetch(filename, options, callback) {
       if (typeof options === "function") {
         callback = options;
         options = {};
       } else if (!options)
         options = {};
       if (!callback)
-        return asPromise(fetch2, this, filename, options);
+        return asPromise(fetch, this, filename, options);
       if (!options.xhr && fs && fs.readFile)
         return fs.readFile(filename, function fetchReadFileCallback(err, contents) {
-          return err && typeof XMLHttpRequest !== "undefined" ? fetch2.xhr(filename, options, callback) : err ? callback(err) : callback(null, options.binary ? contents : contents.toString("utf8"));
+          return err && typeof XMLHttpRequest !== "undefined" ? fetch.xhr(filename, options, callback) : err ? callback(err) : callback(null, options.binary ? contents : contents.toString("utf8"));
         });
-      return fetch2.xhr(filename, options, callback);
+      return fetch.xhr(filename, options, callback);
     }
-    fetch2.xhr = function fetch_xhr(filename, options, callback) {
+    fetch.xhr = function fetch_xhr(filename, options, callback) {
       var xhr = new XMLHttpRequest();
       xhr.onreadystatechange = function fetchOnReadyStateChange() {
         if (xhr.readyState !== 4)
@@ -17680,12 +17680,12 @@ var require_root = __commonJS({
             if (parsed.imports) {
               for (; i2 < parsed.imports.length; ++i2)
                 if (resolved2 = getBundledFileName(parsed.imports[i2]) || self2.resolvePath(filename2, parsed.imports[i2]))
-                  fetch2(resolved2);
+                  fetch(resolved2);
             }
             if (parsed.weakImports) {
               for (i2 = 0; i2 < parsed.weakImports.length; ++i2)
                 if (resolved2 = getBundledFileName(parsed.weakImports[i2]) || self2.resolvePath(filename2, parsed.weakImports[i2]))
-                  fetch2(resolved2, true);
+                  fetch(resolved2, true);
             }
           }
         } catch (err) {
@@ -17694,7 +17694,7 @@ var require_root = __commonJS({
         if (!sync && !queued)
           finish(null, self2);
       }
-      function fetch2(filename2, weak) {
+      function fetch(filename2, weak) {
         filename2 = getBundledFileName(filename2) || filename2;
         if (self2.files.indexOf(filename2) > -1)
           return;
@@ -17743,7 +17743,7 @@ var require_root = __commonJS({
         filename = [filename];
       for (var i = 0, resolved; i < filename.length; ++i)
         if (resolved = self2.resolvePath("", filename[i]))
-          fetch2(resolved);
+          fetch(resolved);
       if (sync)
         return self2;
       if (!queued)
@@ -29128,9 +29128,9 @@ var require_src3 = __commonJS({
       createFromGoogleCredential: call_credentials_1.CallCredentials.createFromGoogleCredential,
       createEmpty: call_credentials_1.CallCredentials.createEmpty
     };
-    var closeClient = (client) => client.close();
+    var closeClient = (client2) => client2.close();
     exports2.closeClient = closeClient;
-    var waitForClientReady = (client, deadline, callback) => client.waitForReady(deadline, callback);
+    var waitForClientReady = (client2, deadline, callback) => client2.waitForReady(deadline, callback);
     exports2.waitForClientReady = waitForClientReady;
     var loadObject = (value, options) => {
       throw new Error("Not available in this library. Use @grpc/proto-loader and loadPackageDefinition instead");
@@ -29148,8 +29148,8 @@ var require_src3 = __commonJS({
       logging.setLoggerVerbosity(verbosity);
     };
     exports2.setLogVerbosity = setLogVerbosity;
-    var getClientChannel = (client) => {
-      return client_1.Client.prototype.getChannel.call(client);
+    var getClientChannel = (client2) => {
+      return client_1.Client.prototype.getChannel.call(client2);
     };
     exports2.getClientChannel = getClientChannel;
     var client_interceptors_1 = require_client_interceptors();
@@ -32051,12 +32051,12 @@ var require_lib2 = __commonJS({
       const dest = new URL$1(destination).protocol;
       return orig === dest;
     };
-    function fetch2(url, opts) {
-      if (!fetch2.Promise) {
+    function fetch(url, opts) {
+      if (!fetch.Promise) {
         throw new Error("native promise missing, set fetch.Promise to your favorite alternative");
       }
-      Body.Promise = fetch2.Promise;
-      return new fetch2.Promise(function(resolve, reject) {
+      Body.Promise = fetch.Promise;
+      return new fetch.Promise(function(resolve, reject) {
         const request = new Request(url, opts);
         const options = getNodeRequestOptions(request);
         const send = (options.protocol === "https:" ? https : http).request;
@@ -32127,7 +32127,7 @@ var require_lib2 = __commonJS({
         req.on("response", function(res) {
           clearTimeout(reqTimeout);
           const headers = createHeadersLenient(res.headers);
-          if (fetch2.isRedirect(res.statusCode)) {
+          if (fetch.isRedirect(res.statusCode)) {
             const location = headers.get("Location");
             let locationURL = null;
             try {
@@ -32189,7 +32189,7 @@ var require_lib2 = __commonJS({
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
                 }
-                resolve(fetch2(new Request(locationURL, requestOpts)));
+                resolve(fetch(new Request(locationURL, requestOpts)));
                 finalize();
                 return;
             }
@@ -32281,11 +32281,11 @@ var require_lib2 = __commonJS({
         stream.end();
       }
     }
-    fetch2.isRedirect = function(code) {
+    fetch.isRedirect = function(code) {
       return code === 301 || code === 302 || code === 303 || code === 307 || code === 308;
     };
-    fetch2.Promise = global.Promise;
-    module2.exports = exports2 = fetch2;
+    fetch.Promise = global.Promise;
+    module2.exports = exports2 = fetch;
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = exports2;
     exports2.Headers = Headers;
@@ -33710,7 +33710,7 @@ var require_gaxios = __commonJS({
     var common_1 = require_common2();
     var retry_1 = require_retry();
     var https_proxy_agent_1 = require_dist2();
-    var fetch2 = hasFetch() ? window.fetch : node_fetch_1.default;
+    var fetch = hasFetch() ? window.fetch : node_fetch_1.default;
     function hasWindow() {
       return typeof window !== "undefined" && !!window;
     }
@@ -33784,7 +33784,7 @@ var require_gaxios = __commonJS({
         return this._request(opts);
       }
       async _defaultAdapter(opts) {
-        const fetchImpl = opts.fetchImplementation || fetch2;
+        const fetchImpl = opts.fetchImplementation || fetch;
         const res = await fetchImpl(opts.url, opts);
         const data = await this.getResponseData(opts, res);
         return this.translateResponse(opts, res, data);
@@ -40946,10 +40946,10 @@ var require_googleauth = __commonJS({
       // GAPIC client libraries should always use self-signed JWTs. The following
       // variables are set on the JWT client in order to indicate the type of library,
       // and sign the JWT with the correct audience and scopes (if not supplied).
-      setGapicJWTValues(client) {
-        client.defaultServicePath = this.defaultServicePath;
-        client.useJWTAccessWithScope = this.useJWTAccessWithScope;
-        client.defaultScopes = this.defaultScopes;
+      setGapicJWTValues(client2) {
+        client2.defaultServicePath = this.defaultServicePath;
+        client2.useJWTAccessWithScope = this.useJWTAccessWithScope;
+        client2.defaultScopes = this.defaultScopes;
       }
       getProjectId(callback) {
         if (callback) {
@@ -41143,8 +41143,8 @@ var require_googleauth = __commonJS({
         if (!location) {
           return null;
         }
-        const client = await this._getApplicationCredentialsFromFilePath(location, options);
-        return client;
+        const client2 = await this._getApplicationCredentialsFromFilePath(location, options);
+        return client2;
       }
       /**
        * Attempts to load default credentials from a file at the given path..
@@ -41198,13 +41198,13 @@ var require_googleauth = __commonJS({
           throw new RangeError(`Cannot extract target principal from ${json.service_account_impersonation_url}`);
         }
         const targetScopes = (_d = this.getAnyScopes()) !== null && _d !== void 0 ? _d : [];
-        const client = new impersonated_1.Impersonated({
+        const client2 = new impersonated_1.Impersonated({
           delegates: (_e = json.delegates) !== null && _e !== void 0 ? _e : [],
           sourceClient,
           targetPrincipal,
           targetScopes: Array.isArray(targetScopes) ? targetScopes : [targetScopes]
         });
-        return client;
+        return client2;
       }
       /**
        * Create a credentials instance using the given input options.
@@ -41213,24 +41213,24 @@ var require_googleauth = __commonJS({
        * @returns JWT or UserRefresh Client with data
        */
       fromJSON(json, options = {}) {
-        let client;
+        let client2;
         if (json.type === refreshclient_1.USER_REFRESH_ACCOUNT_TYPE) {
-          client = new refreshclient_1.UserRefreshClient(options);
-          client.fromJSON(json);
+          client2 = new refreshclient_1.UserRefreshClient(options);
+          client2.fromJSON(json);
         } else if (json.type === impersonated_1.IMPERSONATED_ACCOUNT_TYPE) {
-          client = this.fromImpersonatedJSON(json);
+          client2 = this.fromImpersonatedJSON(json);
         } else if (json.type === baseexternalclient_1.EXTERNAL_ACCOUNT_TYPE) {
-          client = externalclient_1.ExternalAccountClient.fromJSON(json, options);
-          client.scopes = this.getAnyScopes();
+          client2 = externalclient_1.ExternalAccountClient.fromJSON(json, options);
+          client2.scopes = this.getAnyScopes();
         } else if (json.type === externalAccountAuthorizedUserClient_1.EXTERNAL_ACCOUNT_AUTHORIZED_USER_TYPE) {
-          client = new externalAccountAuthorizedUserClient_1.ExternalAccountAuthorizedUserClient(json, options);
+          client2 = new externalAccountAuthorizedUserClient_1.ExternalAccountAuthorizedUserClient(json, options);
         } else {
           options.scopes = this.scopes;
-          client = new jwtclient_1.JWT(options);
-          this.setGapicJWTValues(client);
-          client.fromJSON(json);
+          client2 = new jwtclient_1.JWT(options);
+          this.setGapicJWTValues(client2);
+          client2.fromJSON(json);
         }
-        return client;
+        return client2;
       }
       /**
        * Return a JWT or UserRefreshClient from JavaScript object, caching both the
@@ -41240,10 +41240,10 @@ var require_googleauth = __commonJS({
        * @returns JWT or UserRefresh Client with data
        */
       _cacheClientFromJSON(json, options) {
-        const client = this.fromJSON(json, options);
+        const client2 = this.fromJSON(json, options);
         this.jsonContent = json;
-        this.cachedCredential = client;
-        return client;
+        this.cachedCredential = client2;
+        return client2;
       }
       fromStream(inputStream, optionsOrCallback = {}, callback) {
         let options = {};
@@ -41273,13 +41273,13 @@ var require_googleauth = __commonJS({
               } catch (err) {
                 if (!this.keyFilename)
                   throw err;
-                const client = new jwtclient_1.JWT({
+                const client2 = new jwtclient_1.JWT({
                   ...this.clientOptions,
                   keyFile: this.keyFilename
                 });
-                this.cachedCredential = client;
-                this.setGapicJWTValues(client);
-                return resolve(client);
+                this.cachedCredential = client2;
+                this.setGapicJWTValues(client2);
+                return resolve(client2);
               }
             } catch (err) {
               return reject(err);
@@ -41295,9 +41295,9 @@ var require_googleauth = __commonJS({
        */
       fromAPIKey(apiKey, options) {
         options = options || {};
-        const client = new jwtclient_1.JWT(options);
-        client.fromAPIKey(apiKey);
-        return client;
+        const client2 = new jwtclient_1.JWT(options);
+        client2.fromAPIKey(apiKey);
+        return client2;
       }
       /**
        * Determines whether the current operating system is Windows.
@@ -41387,16 +41387,16 @@ var require_googleauth = __commonJS({
         }
       }
       async getCredentialsAsync() {
-        const client = await this.getClient();
-        if (client instanceof impersonated_1.Impersonated) {
-          return { client_email: client.getTargetPrincipal() };
+        const client2 = await this.getClient();
+        if (client2 instanceof impersonated_1.Impersonated) {
+          return { client_email: client2.getTargetPrincipal() };
         }
-        if (client instanceof baseexternalclient_1.BaseExternalAccountClient) {
-          const serviceAccountEmail = client.getServiceAccountEmail();
+        if (client2 instanceof baseexternalclient_1.BaseExternalAccountClient) {
+          const serviceAccountEmail = client2.getServiceAccountEmail();
           if (serviceAccountEmail) {
             return {
               client_email: serviceAccountEmail,
-              universe_domain: client.universeDomain
+              universe_domain: client2.universeDomain
             };
           }
         }
@@ -41441,27 +41441,27 @@ var require_googleauth = __commonJS({
        * @returns IdTokenClient for making HTTP calls authenticated with ID tokens.
        */
       async getIdTokenClient(targetAudience) {
-        const client = await this.getClient();
-        if (!("fetchIdToken" in client)) {
+        const client2 = await this.getClient();
+        if (!("fetchIdToken" in client2)) {
           throw new Error("Cannot fetch ID token in this environment, use GCE or set the GOOGLE_APPLICATION_CREDENTIALS environment variable to a service account credentials JSON file.");
         }
-        return new idtokenclient_1.IdTokenClient({ targetAudience, idTokenProvider: client });
+        return new idtokenclient_1.IdTokenClient({ targetAudience, idTokenProvider: client2 });
       }
       /**
        * Automatically obtain application default credentials, and return
        * an access token for making requests.
        */
       async getAccessToken() {
-        const client = await this.getClient();
-        return (await client.getAccessToken()).token;
+        const client2 = await this.getClient();
+        return (await client2.getAccessToken()).token;
       }
       /**
        * Obtain the HTTP headers that will provide authorization for a given
        * request.
        */
       async getRequestHeaders(url) {
-        const client = await this.getClient();
-        return client.getRequestHeaders(url);
+        const client2 = await this.getClient();
+        return client2.getRequestHeaders(url);
       }
       /**
        * Obtain credentials for a request, then attach the appropriate headers to
@@ -41471,8 +41471,8 @@ var require_googleauth = __commonJS({
       async authorizeRequest(opts) {
         opts = opts || {};
         const url = opts.url || opts.uri;
-        const client = await this.getClient();
-        const headers = await client.getRequestHeaders(url);
+        const client2 = await this.getClient();
+        const headers = await client2.getRequestHeaders(url);
         opts.headers = Object.assign(opts.headers || {}, headers);
         return opts;
       }
@@ -41483,8 +41483,8 @@ var require_googleauth = __commonJS({
        */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async request(opts) {
-        const client = await this.getClient();
-        return client.request(opts);
+        const client2 = await this.getClient();
+        return client2.request(opts);
       }
       /**
        * Determine the compute environment in which the code is running.
@@ -41498,14 +41498,14 @@ var require_googleauth = __commonJS({
        * @param data The data to be signed.
        */
       async sign(data) {
-        const client = await this.getClient();
-        if (client instanceof impersonated_1.Impersonated) {
-          const signed = await client.sign(data);
+        const client2 = await this.getClient();
+        if (client2 instanceof impersonated_1.Impersonated) {
+          const signed = await client2.sign(data);
           return signed.signedBlob;
         }
         const crypto2 = (0, crypto_1.createCrypto)();
-        if (client instanceof jwtclient_1.JWT && client.key) {
-          const sign = await crypto2.sign(client.key, data);
+        if (client2 instanceof jwtclient_1.JWT && client2.key) {
+          const sign = await crypto2.sign(client2.key, data);
           return sign;
         }
         const creds = await this.getCredentials();
@@ -43006,8 +43006,8 @@ var require_grpc = __commonJS({
         }
         const grpc2 = this.grpc;
         const sslCreds = opts.cert && opts.key ? grpc2.credentials.createSsl(null, Buffer.from(opts.key), Buffer.from(opts.cert)) : grpc2.credentials.createSsl();
-        const client = await this.auth.getClient();
-        const credentials = grpc2.credentials.combineChannelCredentials(sslCreds, grpc2.credentials.createFromGoogleCredential(client));
+        const client2 = await this.auth.getClient();
+        const credentials = grpc2.credentials.combineChannelCredentials(sslCreds, grpc2.credentials.createFromGoogleCredential(client2));
         return credentials;
       }
       static defaultOptions() {
@@ -56016,12 +56016,12 @@ var require_lib4 = __commonJS({
       const dest = new URL$1(destination).protocol;
       return orig === dest;
     };
-    function fetch2(url, opts) {
-      if (!fetch2.Promise) {
+    function fetch(url, opts) {
+      if (!fetch.Promise) {
         throw new Error("native promise missing, set fetch.Promise to your favorite alternative");
       }
-      Body.Promise = fetch2.Promise;
-      return new fetch2.Promise(function(resolve, reject) {
+      Body.Promise = fetch.Promise;
+      return new fetch.Promise(function(resolve, reject) {
         const request = new Request(url, opts);
         const options = getNodeRequestOptions(request);
         const send = (options.protocol === "https:" ? https : http).request;
@@ -56092,7 +56092,7 @@ var require_lib4 = __commonJS({
         req.on("response", function(res) {
           clearTimeout(reqTimeout);
           const headers = createHeadersLenient(res.headers);
-          if (fetch2.isRedirect(res.statusCode)) {
+          if (fetch.isRedirect(res.statusCode)) {
             const location = headers.get("Location");
             let locationURL = null;
             try {
@@ -56154,7 +56154,7 @@ var require_lib4 = __commonJS({
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
                 }
-                resolve(fetch2(new Request(locationURL, requestOpts)));
+                resolve(fetch(new Request(locationURL, requestOpts)));
                 finalize();
                 return;
             }
@@ -56246,11 +56246,11 @@ var require_lib4 = __commonJS({
         stream.end();
       }
     }
-    fetch2.isRedirect = function(code) {
+    fetch.isRedirect = function(code) {
       return code === 301 || code === 302 || code === 303 || code === 307 || code === 308;
     };
-    fetch2.Promise = global.Promise;
-    module2.exports = exports2 = fetch2;
+    fetch.Promise = global.Promise;
+    module2.exports = exports2 = fetch;
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = exports2;
     exports2.Headers = Headers;
@@ -57068,7 +57068,7 @@ var require_fallbackServiceStub = __commonJS({
     var streamArrayParser_1 = require_streamArrayParser();
     var stream_1 = require("stream");
     function generateServiceStub(rpcs, protocol, servicePath, servicePort, authClient, requestEncoder, responseDecoder, numericEnums) {
-      const fetch2 = (0, featureDetection_1.hasWindowFetch)() ? window.fetch : node_fetch_1.default;
+      const fetch = (0, featureDetection_1.hasWindowFetch)() ? window.fetch : node_fetch_1.default;
       const serviceStub = {
         // close method should close all cancel controllers. If this feature request in the future, we can have a cancelControllerFactory that tracks created cancel controllers, and abort them all in close method.
         close: () => {
@@ -57113,7 +57113,7 @@ var require_fallbackServiceStub = __commonJS({
             if (fetchParameters.method === "GET" || fetchParameters.method === "DELETE") {
               delete fetchRequest["body"];
             }
-            return fetch2(url, fetchRequest);
+            return fetch(url, fetchRequest);
           }).then((response) => {
             if (response.ok && rpc.responseStream) {
               (0, stream_1.pipeline)(response.body, streamArrayParser, (err) => {
@@ -186853,70 +186853,47 @@ var require_src12 = __commonJS({
 
 // netlify/functions/analyzeImage.js
 var vision = require_src12();
-var sharp = require("sharp");
-var extractItemNames = (visionResponse) => {
-  if (!visionResponse) return [];
-  const names = [];
-  if (visionResponse.webDetection?.bestGuessLabels?.length) {
-    visionResponse.webDetection.bestGuessLabels.forEach((labelObj) => {
-      if (labelObj.label) names.push(labelObj.label.trim());
-    });
-  }
-  if (names.length === 0 && visionResponse.labelAnnotations?.length) {
-    visionResponse.labelAnnotations.forEach((labelObj) => {
-      if (labelObj.description) names.push(labelObj.description.trim());
-    });
-  }
-  return [...new Set(names)];
-};
-exports.handler = async (event) => {
+var decodedCredentials = Buffer.from(
+  process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+  "base64"
+).toString("utf-8");
+var client = new vision.ImageAnnotatorClient({
+  credentials: JSON.parse(decodedCredentials)
+});
+exports.handler = async function(event) {
   try {
-    if (!event.body) {
-      return { statusCode: 400, body: JSON.stringify({ error: "No request body" }) };
-    }
-    let { imageBase64 } = JSON.parse(event.body);
-    if (!imageBase64) {
-      return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
-    }
-    imageBase64 = imageBase64.split(",")[1] || imageBase64;
-    let imageBuffer = Buffer.from(imageBase64, "base64");
-    try {
-      imageBuffer = await sharp(imageBuffer).jpeg({ quality: 90 }).toBuffer();
-    } catch (err) {
-      console.error("Sharp conversion failed:", err.message);
+    const { imageUrl, imageBase64 } = JSON.parse(event.body || "{}");
+    if (!imageUrl && !imageBase64) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Image format unsupported or corrupt" })
+        body: JSON.stringify({ error: "Missing imageUrl or imageBase64 in request body" })
       };
     }
-    const client = new vision.ImageAnnotatorClient({
-      credentials: JSON.parse(
-        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON.replace(/\\n/g, "\n")
-      )
-    });
-    const [result] = await client.webDetection({
-      image: { content: imageBuffer.toString("base64") }
-    });
-    const possibleItemNames = extractItemNames(result);
-    const itemName = possibleItemNames[0] || "Unknown item";
-    let products = [];
-    const rapidHost = process.env.VITE_REACT_APP_RAPIDAPI_HOST;
-    const rapidKey = process.env.VITE_REACT_APP_RAPIDAPI_KEY;
-    if (itemName !== "Unknown item" && rapidHost && rapidKey) {
-      const rapidApiUrl = `https://${rapidHost}/products/search?query=${encodeURIComponent(itemName)}`;
-      const rapidRes = await fetch(rapidApiUrl, {
-        headers: {
-          "X-RapidAPI-Key": rapidKey,
-          "X-RapidAPI-Host": rapidHost
-        }
-      });
-      const rapidData = await rapidRes.json();
-      products = rapidData.products || [];
-    }
-    return { statusCode: 200, body: JSON.stringify({ itemName, products }) };
-  } catch (err) {
-    console.error("analyzeImage error:", err);
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    const image = imageUrl ? { source: { imageUri: imageUrl } } : { content: Buffer.from(imageBase64, "base64") };
+    const request = {
+      image,
+      features: [
+        { type: "PRODUCT_SEARCH", maxResults: 10 },
+        { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "LOGO_DETECTION", maxResults: 5 },
+        { type: "TEXT_DETECTION", maxResults: 5 },
+        { type: "WEB_DETECTION", maxResults: 5 }
+      ]
+    };
+    const [result] = await client.annotateImage(request);
+    const labels = result.labelAnnotations?.map((l) => l.description) || [];
+    const texts = result.textAnnotations?.map((t) => t.description) || [];
+    const combined = [...texts, ...labels];
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ labels, texts, combined })
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: error.message })
+    };
   }
 };
 /*! Bundled license information:

@@ -28,8 +28,11 @@ exports.handler = async function (event) {
     const request = {
       image,
       features: [
-        { type: "LABEL_DETECTION" },
-        { type: "TEXT_DETECTION" }
+        { type: "PRODUCT_SEARCH", maxResults: 10 },
+        { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "LOGO_DETECTION", maxResults: 5 },
+        { type: "TEXT_DETECTION", maxResults: 5 },
+        { type: "WEB_DETECTION", maxResults: 5 },
       ],
     };
 
