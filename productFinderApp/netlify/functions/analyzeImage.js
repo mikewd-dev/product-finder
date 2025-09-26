@@ -73,8 +73,8 @@ exports.handler = async (event) => {
     if (rapidRes.ok) {
       const data = await rapidRes.json();
       console.log("RapidAPI response:", JSON.stringify(data, null, 2));
-      if (data.products?.length) {
-        products = data.products;
+      if (data.data?.products?.length) {
+        products = data.data.products;
       }
     } else {
       console.error("RapidAPI fetch failed:", rapidRes.status, rapidRes.statusText);
