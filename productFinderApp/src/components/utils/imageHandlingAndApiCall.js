@@ -1,5 +1,3 @@
-
-// 🔹 Safely modify and normalize product data
 export const modifyData = (products = []) => {
   if (!Array.isArray(products)) return [];
   return products.map((product) => ({
@@ -89,13 +87,13 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
     // Extract item name from Vision API response
     extractItemNameFromResponse(analyzeResponse, setProductName);
 
-    if (!analyzeResponse.data.products || analyzeResponse.data.products.length === 0) {
+    if (!analyzeResponse.products || analyzeResponse.products.length === 0) {
       setError("No products found for this item.");
       return [];
     }
 
     // Shape the product data for the frontend
-    return modifyData(analyzeResponse.data);
+    return modifyData(analyzeResponse.products);
 
   } catch (err) {
     console.error("Error handling image upload:", err);
