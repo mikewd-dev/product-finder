@@ -23,7 +23,7 @@ exports.handler = async (event) => {
 
     const imageBuffer = Buffer.from(imageBase64, "base64");
 
-    // Call Vision API with multiple features
+    // Call Vision API
     const [result] = await client.annotateImage({
       image: { content: imageBuffer.toString("base64") },
       features: [
@@ -33,7 +33,7 @@ exports.handler = async (event) => {
       ],
     });
 
-    // Gather all possible names
+    // Collect all possible labels
     const namesToTry = [];
 
     if (result.webDetection?.bestGuessLabels?.length) {
@@ -50,28 +50,39 @@ exports.handler = async (event) => {
 
     const uniqueNames = [...new Set(namesToTry)];
 
-    // Pick the first label as the best guess
-    const itemName = uniqueNames[0] || "Unknown item";
-
     // RapidAPI credentials
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    // Make only 1 RapidAPI call
-    const rapidRes = await fetch(
-      `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`,
-      {
-        headers: {
-          "X-RapidAPI-Key": rapidKey,
-          "X-RapidAPI-Host": rapidHost,
-        },
-      }
-    );
-
     let products = [];
-    if (rapidRes.ok) {
+    let itemName = "Unknown item";
+
+    for (const name of uniqueNames) {
+      console.log("Querying RapidAPI with:", name);
+
+      const rapidRes = await fetch(
+        `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(name)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`,
+        {
+          headers: {
+            "X-RapidAPI-Key": rapidKey,
+            "X-RapidAPI-Host": rapidHost,
+          },
+        }
+      );
+
+      if (!rapidRes.ok) {
+        console.warn("RapidAPI call failed for", name, "status:", rapidRes.status);
+        continue;
+      }
+
       const data = await rapidRes.json();
-      if (data.products?.length) products = data.products;
+      console.log("RapidAPI response for", name, ":", data);
+
+      if (data.products?.length) {
+        products = data.products;
+        itemName = name;
+        break; // Stop at the first successful match
+      }
     }
 
     return {
