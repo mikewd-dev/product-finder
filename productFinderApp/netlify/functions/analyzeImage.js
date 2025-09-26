@@ -33,35 +33,28 @@ exports.handler = async (event) => {
       ],
     });
 
-    // Collect all possible labels
+    // Gather all possible labels
     const namesToTry = [];
-
-    if (result.webDetection?.bestGuessLabels?.length) {
+    if (result.webDetection?.bestGuessLabels?.length)
       result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
-    }
-
-    if (result.labelAnnotations?.length) {
+    if (result.labelAnnotations?.length)
       result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
-    }
-
-    if (result.textAnnotations?.length) {
+    if (result.textAnnotations?.length)
       result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
-    }
 
     const uniqueNames = [...new Set(namesToTry)];
 
-    // RapidAPI credentials
+    // Take top 2 labels
+    const topLabels = uniqueNames.slice(0, 2);
+    if (topLabels.length === 0) topLabels.push("Unknown item");
+
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    let products = [];
-    let itemName = "Unknown item";
-
-    for (const name of uniqueNames) {
-      console.log("Querying RapidAPI with:", name);
-
-      const rapidRes = await fetch(
-        `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(name)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`,
+    // Call RapidAPI in parallel
+    const fetchPromises = topLabels.map(async (label) => {
+      const res = await fetch(
+        `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(label)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`,
         {
           headers: {
             "X-RapidAPI-Key": rapidKey,
@@ -69,25 +62,22 @@ exports.handler = async (event) => {
           },
         }
       );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.products?.length ? { products: data.products, label } : null;
+    });
 
-      if (!rapidRes.ok) {
-        console.warn("RapidAPI call failed for", name, "status:", rapidRes.status);
-        continue;
-      }
-
-      const data = await rapidRes.json();
-      console.log("RapidAPI response for", name, ":", data);
-
-      if (data.products?.length) {
-        products = data.products;
-        itemName = name;
-        break; // Stop at the first successful match
-      }
-    }
+    // Wait for first successful result
+    const results = await Promise.all(fetchPromises);
+    const found = results.find(r => r !== null);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ itemName, products, visionLabels: uniqueNames }),
+      body: JSON.stringify({
+        itemName: found?.label || topLabels[0],
+        products: found?.products || [],
+        visionLabels: uniqueNames,
+      }),
     };
   } catch (err) {
     console.error("analyzeImage error:", err);
