@@ -30,7 +30,7 @@ exports.handler = async (event) => {
         { type: "WEB_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
         { type: "TEXT_DETECTION", maxResults: 5 },
-        { type: "PRODCT_SEARCH", maxResults: 5 }
+        { type: "PRODUCT_SEARCH", maxResults: 5 }
       ],
     });
 
