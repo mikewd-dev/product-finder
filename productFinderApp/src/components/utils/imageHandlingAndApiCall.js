@@ -89,7 +89,7 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
     // Extract item name from Vision API response
     extractItemNameFromResponse(analyzeResponse, setProductName);
 
-    if (!analyzeResponse.data || analyzeResponse.data.length === 0) {
+    if (!analyzeResponse.data.products || analyzeResponse.data.products.length === 0) {
       setError("No products found for this item.");
       return [];
     }
