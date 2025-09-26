@@ -3,14 +3,14 @@ export const modifyData = (products = []) => {
   return products.map((product) => ({
     name: product?.product_title,
     description: product?.product_description,
-    retailer: product?.offer?.store_name,
-    rating: product?.offer?.store_rating,
+    retailer: product?.store_name,
+    rating: product?.store_rating,
     price: product?.offer?.price ? product.offer.price.replace(/£/g, "") : undefined,
-    shipping: product?.offer?.shipping,
-    link: product?.offer?.offer_page_url,
-    images: Array.isArray(product?.product_photos)
-      ? product.product_photos
-      : [product?.product_photos].filter(Boolean),
+    shipping: product?.shipping,
+    link: product?.offer_page_url,
+    images: Array.isArray(product?.product_photo)
+      ? product.product_photo
+      : [product?.product_photo].filter(Boolean),
   }));
 };
 
