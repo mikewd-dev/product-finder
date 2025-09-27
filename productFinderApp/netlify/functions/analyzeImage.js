@@ -28,9 +28,10 @@ exports.handler = async (event) => {
       image: { content: imageBuffer.toString("base64") },
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
-        { type: "LABEL_DETECTION", maxResults: 5 },
         { type: "TEXT_DETECTION", maxResults: 5 },
-        { type: "PRODUCT_SEARCH", maxResults: 5 }
+        { type: "LOGO_DETECTION", maxResults: 3 },
+        { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "OBJECT_LOCALIZATION", maxResults: 5 }
       ],
     });
 
@@ -41,13 +42,20 @@ exports.handler = async (event) => {
       result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
     }
 
-    if (result.labelAnnotations?.length) {
-      result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
-    }
-
+    // Text Detection (OCR)
     if (result.textAnnotations?.length) {
       result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
     }
+
+    // Logo Detection
+    if (result.logoAnnotations?.length) {
+      result.logoAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
+    }
+
+    // Label Detection
+    if (result.labelAnnotations?.length) {
+      result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
+}
 
     const uniqueNames = [...new Set(namesToTry)];
 
