@@ -23,66 +23,65 @@ exports.handler = async (event) => {
 
     const imageBuffer = Buffer.from(imageBase64, "base64");
 
-    // Call Vision API
+    // Google Vision API call
     const [result] = await client.annotateImage({
       image: { content: imageBuffer.toString("base64") },
       features: [
-        // { type: "WEB_DETECTION", maxResults: 5 },
-        // { type: "LABEL_DETECTION", maxResults: 5 },
-        // { type: "TEXT_DETECTION", maxResults: 5 },
-        { type: "PRODUCT_SEARCH", maxResults: 5 }
+        { type: "WEB_DETECTION", maxResults: 5 },
+        { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "TEXT_DETECTION", maxResults: 5 },
       ],
     });
 
-    // Gather all possible labels
+    // Gather candidate search terms
     const namesToTry = [];
-
     if (result.webDetection?.bestGuessLabels?.length) {
       result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
     }
-
     if (result.labelAnnotations?.length) {
       result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
     }
-
     if (result.textAnnotations?.length) {
       result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
     }
 
+    // Remove duplicates
     const uniqueNames = [...new Set(namesToTry)];
-
-    console.log("Vision labels:", uniqueNames);
-
-    const itemName = uniqueNames[0] || "Unknown item";
-
-    // RapidAPI
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
-    console.log("RapidAPI URL:", rapidUrl);
-
-    const rapidRes = await fetch(rapidUrl, {
-      headers: {
-        "X-RapidAPI-Key": rapidKey,
-        "X-RapidAPI-Host": rapidHost,
-      },
-    });
-
     let products = [];
-    if (rapidRes.ok) {
-      const data = await rapidRes.json();
-      console.log("RapidAPI response:", JSON.stringify(data, null, 2));
-      if (data.data?.products?.length) {
-        products = data.data.products;
+    let foundName = null;
+
+    // Try each candidate until we find products
+    for (const term of uniqueNames) {
+      const url = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(term)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
+      console.log("Trying RapidAPI search:", url);
+
+      const res = await fetch(url, {
+        headers: {
+          "X-RapidAPI-Key": rapidKey,
+          "X-RapidAPI-Host": rapidHost,
+        },
+      });
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      if (data.products?.length) {
+        products = data.products;
+        foundName = term;
+        break; // stop at first successful match
       }
-    } else {
-      console.error("RapidAPI fetch failed:", rapidRes.status, rapidRes.statusText);
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ itemName, products, visionLabels: uniqueNames }),
+      body: JSON.stringify({
+        itemName: foundName || uniqueNames[0] || "Unknown item",
+        products,
+        visionLabels: uniqueNames,
+      }),
     };
   } catch (err) {
     console.error("analyzeImage error:", err);
