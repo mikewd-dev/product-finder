@@ -29,6 +29,7 @@ exports.handler = async (event) => {
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "OBJECT_LOCALIZATION", maxResults: 5 },
         { type: "TEXT_DETECTION", maxResults: 5 },
         { type: "PRODUCT_SEARCH", maxResults: 5 }
       ],
