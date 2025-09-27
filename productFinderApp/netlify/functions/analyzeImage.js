@@ -29,38 +29,52 @@ exports.handler = async (event) => {
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
-        { type: "OBJECT_LOCALIZATION", maxResults: 5 },
         { type: "TEXT_DETECTION", maxResults: 5 },
-        { type: "PRODUCT_SEARCH", maxResults: 5 }
       ],
     });
 
-    // Gather all possible labels
     const namesToTry = [];
 
-    if (result.webDetection?.bestGuessLabels?.length) {
-      result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
-    }
-
-    if (result.labelAnnotations?.length) {
-      result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
-    }
-
+    // ✅ Clean OCR text
     if (result.textAnnotations?.length) {
-      result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
+      const rawText = result.textAnnotations[0].description.trim();
+      // Replace newlines, split into words
+      const tokens = rawText.replace(/\n/g, " ").split(/\s+/);
+
+      // Heuristic: keep tokens that look like brand/product names
+      const ocrCandidates = tokens.filter(
+        (t) =>
+          /^[A-Za-z0-9-]+$/.test(t) && // only keep words with letters/numbers
+          t.length > 2 && // avoid short junk like "of", "on"
+          !["the", "and", "for", "with", "from"].includes(t.toLowerCase()) // stopwords
+      );
+
+      namesToTry.push(...ocrCandidates);
+    }
+
+    // ✅ Add best guess labels
+    if (result.webDetection?.bestGuessLabels?.length) {
+      result.webDetection.bestGuessLabels.forEach((l) => l.label && namesToTry.push(l.label.trim()));
+    }
+
+    // ✅ Add Vision label annotations
+    if (result.labelAnnotations?.length) {
+      result.labelAnnotations.forEach((l) => l.description && namesToTry.push(l.description.trim()));
     }
 
     const uniqueNames = [...new Set(namesToTry)];
-
-    console.log("Vision labels:", uniqueNames);
-
     const itemName = uniqueNames[0] || "Unknown item";
+
+    console.log("Vision extracted candidates:", uniqueNames);
 
     // RapidAPI
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
+    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(
+      itemName
+    )}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
+
     console.log("RapidAPI URL:", rapidUrl);
 
     const rapidRes = await fetch(rapidUrl, {
@@ -74,8 +88,8 @@ exports.handler = async (event) => {
     if (rapidRes.ok) {
       const data = await rapidRes.json();
       console.log("RapidAPI response:", JSON.stringify(data, null, 2));
-      if (data.data?.products?.length) {
-        products = data.data.products;
+      if (data.products?.length) {
+        products = data.products;
       }
     } else {
       console.error("RapidAPI fetch failed:", rapidRes.status, rapidRes.statusText);
