@@ -23,48 +23,44 @@ exports.handler = async (event) => {
 
     const imageBuffer = Buffer.from(imageBase64, "base64");
 
-    // Call Vision API with updated features
+    // Call Vision API
     const [result] = await client.annotateImage({
       image: { content: imageBuffer.toString("base64") },
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
-        { type: "TEXT_DETECTION", maxResults: 5 },
-        { type: "LOGO_DETECTION", maxResults: 3 },
         { type: "LABEL_DETECTION", maxResults: 5 },
-        { type: "OBJECT_LOCALIZATION", maxResults: 5 }
+        { type: "TEXT_DETECTION", maxResults: 5 },
+        { type: "PRODUCT_SEARCH", maxResults: 5 }
       ],
     });
 
-    // 🔹 Extract possible names
+    // Gather all possible labels
     const namesToTry = [];
 
-    // Web Detection best guess
     if (result.webDetection?.bestGuessLabels?.length) {
       result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
     }
 
-    // Text Detection (OCR)
-    if (result.textAnnotations?.length) {
-      result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
-    }
-
-    // Logo Detection
-    if (result.logoAnnotations?.length) {
-      result.logoAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
-    }
-
-    // Label Detection
     if (result.labelAnnotations?.length) {
       result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
     }
 
+    if (result.textAnnotations?.length) {
+      result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
+    }
+
     const uniqueNames = [...new Set(namesToTry)];
+
+    console.log("Vision labels:", uniqueNames);
+
     const itemName = uniqueNames[0] || "Unknown item";
 
-    // 🔹 RapidAPI fetch
+    // RapidAPI
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
+
     const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
+    console.log("RapidAPI URL:", rapidUrl);
 
     const rapidRes = await fetch(rapidUrl, {
       headers: {
@@ -76,6 +72,7 @@ exports.handler = async (event) => {
     let products = [];
     if (rapidRes.ok) {
       const data = await rapidRes.json();
+      console.log("RapidAPI response:", JSON.stringify(data, null, 2));
       if (data.data?.products?.length) {
         products = data.data.products;
       }
