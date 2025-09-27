@@ -23,59 +23,48 @@ exports.handler = async (event) => {
 
     const imageBuffer = Buffer.from(imageBase64, "base64");
 
-    // Call Vision API
+    // Call Vision API with updated features
     const [result] = await client.annotateImage({
       image: { content: imageBuffer.toString("base64") },
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
-        { type: "LABEL_DETECTION", maxResults: 5 },
         { type: "TEXT_DETECTION", maxResults: 5 },
+        { type: "LOGO_DETECTION", maxResults: 3 },
+        { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "OBJECT_LOCALIZATION", maxResults: 5 }
       ],
     });
 
+    // 🔹 Extract possible names
     const namesToTry = [];
 
-    // ✅ Clean OCR text
-    if (result.textAnnotations?.length) {
-      const rawText = result.textAnnotations[0].description.trim();
-      // Replace newlines, split into words
-      const tokens = rawText.replace(/\n/g, " ").split(/\s+/);
-
-      // Heuristic: keep tokens that look like brand/product names
-      const ocrCandidates = tokens.filter(
-        (t) =>
-          /^[A-Za-z0-9-]+$/.test(t) && // only keep words with letters/numbers
-          t.length > 2 && // avoid short junk like "of", "on"
-          !["the", "and", "for", "with", "from"].includes(t.toLowerCase()) // stopwords
-      );
-
-      namesToTry.push(...ocrCandidates);
-    }
-
-    // ✅ Add best guess labels
+    // Web Detection best guess
     if (result.webDetection?.bestGuessLabels?.length) {
-      result.webDetection.bestGuessLabels.forEach((l) => l.label && namesToTry.push(l.label.trim()));
+      result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
     }
 
-    // ✅ Add Vision label annotations
+    // Text Detection (OCR)
+    if (result.textAnnotations?.length) {
+      result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
+    }
+
+    // Logo Detection
+    if (result.logoAnnotations?.length) {
+      result.logoAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
+    }
+
+    // Label Detection
     if (result.labelAnnotations?.length) {
-      result.labelAnnotations.forEach((l) => l.description && namesToTry.push(l.description.trim()));
+      result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
     }
 
     const uniqueNames = [...new Set(namesToTry)];
     const itemName = uniqueNames[0] || "Unknown item";
 
-    console.log("Vision extracted candidates:", uniqueNames);
-
-    // RapidAPI
+    // 🔹 RapidAPI fetch
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
-
-    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(
-      itemName
-    )}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
-
-    console.log("RapidAPI URL:", rapidUrl);
+    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
 
     const rapidRes = await fetch(rapidUrl, {
       headers: {
@@ -87,9 +76,8 @@ exports.handler = async (event) => {
     let products = [];
     if (rapidRes.ok) {
       const data = await rapidRes.json();
-      console.log("RapidAPI response:", JSON.stringify(data, null, 2));
-      if (data.products?.length) {
-        products = data.products;
+      if (data.data?.products?.length) {
+        products = data.data.products;
       }
     } else {
       console.error("RapidAPI fetch failed:", rapidRes.status, rapidRes.statusText);
