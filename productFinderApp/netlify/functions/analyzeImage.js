@@ -23,70 +23,70 @@ exports.handler = async (event) => {
 
     const imageBuffer = Buffer.from(imageBase64, "base64");
 
-    // Call Vision API
-    const [result] = await client.annotateImage({
+    // --- Step 1: Run primary features with TEXT_DETECTION ---
+    const [primaryResult] = await client.annotateImage({
       image: { content: imageBuffer.toString("base64") },
       features: [
-        { type: "WEB_DETECTION", maxResults: 10 },
-        { type: "DOCUMENT_TEXT_DETECTION", maxResults: 10 },
-        { type: "TEXT_DETECTION", maxResults: 10 },
-        { type: "LOGO_DETECTION", maxResults: 5 },
+        { type: "WEB_DETECTION", maxResults: 5 },
+        { type: "LOGO_DETECTION", maxResults: 3 },
         { type: "LABEL_DETECTION", maxResults: 5 },
-        { type: "OBJECT_LOCALIZATION", maxResults: 5 }
+        { type: "OBJECT_LOCALIZATION", maxResults: 5 },
+        { type: "TEXT_DETECTION", maxResults: 5 },
       ],
     });
 
-    // Gather all possible labels
-    const namesToTry = [];
+    // Gather all possible names
+    let namesToTry = [];
 
-    if (result.webDetection?.bestGuessLabels?.length) {
-      result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
+    if (primaryResult.webDetection?.bestGuessLabels?.length) {
+      primaryResult.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
     }
 
-    // Text Detection (OCR)
-    if (result.textAnnotations?.length) {
-      result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
+    if (primaryResult.logoAnnotations?.length) {
+      primaryResult.logoAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
     }
 
-    // Logo Detection
-    if (result.logoAnnotations?.length) {
-      result.logoAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
+    if (primaryResult.labelAnnotations?.length) {
+      primaryResult.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
     }
 
-    // Label Detection
-    if (result.labelAnnotations?.length) {
-      result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
-}
+    if (primaryResult.textAnnotations?.length) {
+      primaryResult.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
+    }
+
+    // --- Step 2: Fallback with DOCUMENT_TEXT_DETECTION if no text found ---
+    if (!primaryResult.textAnnotations?.length) {
+      const [docResult] = await client.annotateImage({
+        image: { content: imageBuffer.toString("base64") },
+        features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
+      });
+
+      if (docResult.fullTextAnnotation?.text) {
+        namesToTry.push(docResult.fullTextAnnotation.text.trim());
+      }
+    }
 
     const uniqueNames = [...new Set(namesToTry)];
-
-    console.log("Vision labels:", uniqueNames);
-
     const itemName = uniqueNames[0] || "Unknown item";
 
-    // RapidAPI
+    // --- Step 3: Call RapidAPI with best guess ---
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
-    console.log("RapidAPI URL:", rapidUrl);
-
-    const rapidRes = await fetch(rapidUrl, {
-      headers: {
-        "X-RapidAPI-Key": rapidKey,
-        "X-RapidAPI-Host": rapidHost,
-      },
-    });
+    const rapidRes = await fetch(
+      `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`,
+      {
+        headers: {
+          "X-RapidAPI-Key": rapidKey,
+          "X-RapidAPI-Host": rapidHost,
+        },
+      }
+    );
 
     let products = [];
     if (rapidRes.ok) {
       const data = await rapidRes.json();
-      console.log("RapidAPI response:", JSON.stringify(data, null, 2));
-      if (data.data?.products?.length) {
-        products = data.data.products;
-      }
-    } else {
-      console.error("RapidAPI fetch failed:", rapidRes.status, rapidRes.statusText);
+      if (data.products?.length) products = data.products;
     }
 
     return {
