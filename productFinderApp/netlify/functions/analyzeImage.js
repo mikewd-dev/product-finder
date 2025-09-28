@@ -28,6 +28,7 @@ exports.handler = async (event) => {
       image: { content: imageBuffer.toString("base64") },
       features: [
         { type: "WEB_DETECTION", maxResults: 10 },
+        { type: "DOCUMENT_TEXT_DETECTION", maxResults: 10 },
         { type: "TEXT_DETECTION", maxResults: 10 },
         { type: "LOGO_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
