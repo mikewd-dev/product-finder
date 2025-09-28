@@ -27,34 +27,29 @@ exports.handler = async (event) => {
     const imageWidth = metadata.width;
     const imageHeight = metadata.height;
 
-    // Initial Vision API call for Object Localization
-    const [result] = await client.annotateImage({
+    // --- Step 1: Detect objects on full image ---
+    const [objectResult] = await client.annotateImage({
       image: { content: originalBuffer.toString("base64") },
-      features: [
-        { type: "OBJECT_LOCALIZATION", maxResults: 5 },
-        { type: "LOGO_DETECTION", maxResults: 5 },
-        { type: "TEXT_DETECTION", maxResults: 5 },
-      ],
+      features: [{ type: "OBJECT_LOCALIZATION", maxResults: 5 }],
     });
 
-    // Find the highest-confidence object
-    const objects = result.localizedObjectAnnotations || [];
+    const objects = objectResult.localizedObjectAnnotations || [];
     let mainObject = objects.sort((a, b) => b.score - a.score)[0];
     console.log("Main object detected:", mainObject?.name, mainObject?.score);
 
     let focusedBuffer = originalBuffer;
-
     if (mainObject) {
-      // Convert normalized coordinates to pixels
+      // Convert normalized coords to pixels
       const vertices = mainObject.boundingPoly.normalizedVertices;
       const left = Math.floor(vertices[0].x * imageWidth);
       const top = Math.floor(vertices[0].y * imageHeight);
       const right = Math.floor(vertices[2].x * imageWidth);
       const bottom = Math.floor(vertices[2].y * imageHeight);
+
       const width = right - left;
       const height = bottom - top;
 
-      // Crop to the main object
+      // Crop to main object
       focusedBuffer = await sharp(originalBuffer)
         .extract({ left, top, width, height })
         .resize({ width: 1024, height: 1024, fit: "inside" })
@@ -62,46 +57,82 @@ exports.handler = async (event) => {
         .toBuffer();
     }
 
-    // Focused Vision API call on cropped object
-    const [focusedResult] = await client.annotateImage({
-      image: { content: focusedBuffer.toString("base64") },
+    // --- Step 2: Vision on full image ---
+    const [fullResult] = await client.annotateImage({
+      image: { content: originalBuffer.toString("base64") },
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "LOGO_DETECTION", maxResults: 5 },
         { type: "TEXT_DETECTION", maxResults: 5 },
       ],
     });
 
-    // Gather all possible labels
-    const namesToTry = [];
-
-    if (focusedResult.webDetection?.bestGuessLabels?.length) {
-      focusedResult.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
+    // --- Step 3: Vision on focused object ---
+    let focusedResult = null;
+    if (mainObject) {
+      [focusedResult] = await client.annotateImage({
+        image: { content: focusedBuffer.toString("base64") },
+        features: [
+          { type: "WEB_DETECTION", maxResults: 5 },
+          { type: "LABEL_DETECTION", maxResults: 5 },
+          { type: "LOGO_DETECTION", maxResults: 5 },
+          { type: "TEXT_DETECTION", maxResults: 5 },
+        ],
+      });
     }
 
-    if (focusedResult.labelAnnotations?.length) {
-      focusedResult.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
+    // --- Step 4: Merge results ---
+    function extractLabels(result, weight = 1) {
+      const names = [];
+      if (!result) return names;
+
+      if (result.webDetection?.bestGuessLabels?.length) {
+        result.webDetection.bestGuessLabels.forEach((l) =>
+          l.label && names.push({ name: l.label.trim(), score: 80 * weight })
+        );
+      }
+      if (result.labelAnnotations?.length) {
+        result.labelAnnotations.forEach((l) =>
+          names.push({ name: l.description.trim(), score: Math.round(l.score * 100 * weight) })
+        );
+      }
+      if (result.logoAnnotations?.length) {
+        result.logoAnnotations.forEach((l) =>
+          names.push({ name: l.description.trim(), score: Math.round(l.score * 100 * weight) })
+        );
+      }
+      if (result.textAnnotations?.length) {
+        const mainText = result.textAnnotations[0].description.trim();
+        if (mainText) names.push({ name: mainText, score: 70 * weight });
+      }
+      return names;
     }
 
-    if (focusedResult.logoAnnotations?.length) {
-      focusedResult.logoAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
-    }
+    const allCandidates = [
+      ...extractLabels(fullResult, 1),
+      ...extractLabels(focusedResult, 2), // weight focused higher
+    ];
 
-    if (focusedResult.textAnnotations?.length) {
-      const mainText = focusedResult.textAnnotations[0].description.trim();
-      if (mainText) namesToTry.push(mainText);
-    }
+    const ranked = Object.values(
+      allCandidates.reduce((acc, cur) => {
+        if (!acc[cur.name]) acc[cur.name] = { name: cur.name, score: 0 };
+        acc[cur.name].score += cur.score;
+        return acc;
+      }, {})
+    ).sort((a, b) => b.score - a.score);
 
-    const uniqueNames = [...new Set(namesToTry)];
-    console.log("Focused Vision labels:", uniqueNames);
+    console.log("Ranked candidates:", ranked);
 
-    const itemName = uniqueNames[0] || "Unknown item";
+    const itemName = ranked.length ? ranked[0].name : "Unknown item";
 
-    // Call RapidAPI
+    // --- Step 5: RapidAPI lookup ---
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
+    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(
+      itemName
+    )}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
 
     const rapidRes = await fetch(rapidUrl, {
       headers: {
@@ -120,7 +151,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ itemName, products, visionLabels: uniqueNames }),
+      body: JSON.stringify({ itemName, products, ranked }),
     };
   } catch (err) {
     console.error("analyzeImage error:", err);
