@@ -11,60 +11,6 @@ const client = new vision.ImageAnnotatorClient({
   credentials: JSON.parse(decodedCredentials),
 });
 
-// 🔹 Helper: rank Vision API labels into candidates
-function rankItemNames(result) {
-  const candidates = [];
-
-  // 1. Logos (brand names)
-  if (result.logoAnnotations?.length) {
-    result.logoAnnotations.forEach(logo => {
-      if (logo.description) candidates.push({ name: logo.description.trim(), score: 100 });
-    });
-  }
-
-  // 2. Short text (often product names)
-  if (result.textAnnotations?.length) {
-    result.textAnnotations.forEach(t => {
-      if (t.description) {
-        const text = t.description.trim();
-        if (text.length <= 20 && !/\s{2,}/.test(text)) {
-          candidates.push({ name: text, score: 90 });
-        } else {
-          candidates.push({ name: text, score: 50 });
-        }
-      }
-    });
-  }
-
-  // 3. Web detection best guesses
-  if (result.webDetection?.bestGuessLabels?.length) {
-    result.webDetection.bestGuessLabels.forEach(l => {
-      if (l.label) candidates.push({ name: l.label.trim(), score: 80 });
-    });
-  }
-
-  // 4. Labels (general categories)
-  if (result.labelAnnotations?.length) {
-    result.labelAnnotations.forEach(l => {
-      if (l.description) candidates.push({ name: l.description.trim(), score: 40 });
-    });
-  }
-
-  // Deduplicate: keep highest score per name
-  const seen = new Map();
-  for (const c of candidates) {
-    if (!seen.has(c.name) || c.score > seen.get(c.name).score) {
-      seen.set(c.name, c);
-    }
-  }
-
-  // Sort by score descending
-  const ranked = Array.from(seen.values()).sort((a, b) => b.score - a.score);
-  console.log("Ranked candidates:", ranked);
-
-  return ranked.map(r => r.name);
-}
-
 exports.handler = async (event) => {
   try {
     if (!event.body) {
@@ -77,60 +23,104 @@ exports.handler = async (event) => {
     }
 
     const originalBuffer = Buffer.from(imageBase64, "base64");
+    const metadata = await sharp(originalBuffer).metadata();
+    const imageWidth = metadata.width;
+    const imageHeight = metadata.height;
 
-    // Resize image for OCR / Vision
-    const resizedBuffer = await sharp(originalBuffer)
-      .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 90 })
-      .toBuffer();
-
-    // Call Vision API
+    // Initial Vision API call for Object Localization
     const [result] = await client.annotateImage({
-      image: { content: resizedBuffer.toString("base64") },
+      image: { content: originalBuffer.toString("base64") },
       features: [
-        { type: "WEB_DETECTION", maxResults: 5 },
-        { type: "LABEL_DETECTION", maxResults: 5 },
-        { type: "DOCUMENT_TEXT_DETECTION", maxResults: 5 },
-        { type: "LOGO_DETECTION", maxResults: 5 },
         { type: "OBJECT_LOCALIZATION", maxResults: 5 },
+        { type: "LOGO_DETECTION", maxResults: 5 },
+        { type: "TEXT_DETECTION", maxResults: 5 },
       ],
     });
 
-    // Rank all possible labels
-    const rankedNames = rankItemNames(result);
+    // Find the highest-confidence object
+    const objects = result.localizedObjectAnnotations || [];
+    let mainObject = objects.sort((a, b) => b.score - a.score)[0];
+    console.log("Main object detected:", mainObject?.name, mainObject?.score);
 
-    // Call RapidAPI using top-ranked candidate first, fall back if no products
+    let focusedBuffer = originalBuffer;
+
+    if (mainObject) {
+      // Convert normalized coordinates to pixels
+      const vertices = mainObject.boundingPoly.normalizedVertices;
+      const left = Math.floor(vertices[0].x * imageWidth);
+      const top = Math.floor(vertices[0].y * imageHeight);
+      const right = Math.floor(vertices[2].x * imageWidth);
+      const bottom = Math.floor(vertices[2].y * imageHeight);
+      const width = right - left;
+      const height = bottom - top;
+
+      // Crop to the main object
+      focusedBuffer = await sharp(originalBuffer)
+        .extract({ left, top, width, height })
+        .resize({ width: 1024, height: 1024, fit: "inside" })
+        .jpeg({ quality: 90 })
+        .toBuffer();
+    }
+
+    // Focused Vision API call on cropped object
+    const [focusedResult] = await client.annotateImage({
+      image: { content: focusedBuffer.toString("base64") },
+      features: [
+        { type: "WEB_DETECTION", maxResults: 5 },
+        { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "TEXT_DETECTION", maxResults: 5 },
+      ],
+    });
+
+    // Gather all possible labels
+    const namesToTry = [];
+
+    if (focusedResult.webDetection?.bestGuessLabels?.length) {
+      focusedResult.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
+    }
+
+    if (focusedResult.labelAnnotations?.length) {
+      focusedResult.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
+    }
+
+    if (focusedResult.logoAnnotations?.length) {
+      focusedResult.logoAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
+    }
+
+    if (focusedResult.textAnnotations?.length) {
+      const mainText = focusedResult.textAnnotations[0].description.trim();
+      if (mainText) namesToTry.push(mainText);
+    }
+
+    const uniqueNames = [...new Set(namesToTry)];
+    console.log("Focused Vision labels:", uniqueNames);
+
+    const itemName = uniqueNames[0] || "Unknown item";
+
+    // Call RapidAPI
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
+    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
+
+    const rapidRes = await fetch(rapidUrl, {
+      headers: {
+        "X-RapidAPI-Key": rapidKey,
+        "X-RapidAPI-Host": rapidHost,
+      },
+    });
+
     let products = [];
-    let chosenName = "Unknown item";
-
-    for (const name of rankedNames) {
-      const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(name)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
-
-      console.log("Trying RapidAPI with:", name);
-
-      const rapidRes = await fetch(rapidUrl, {
-        headers: {
-          "X-RapidAPI-Key": rapidKey,
-          "X-RapidAPI-Host": rapidHost,
-        },
-      });
-
-      if (rapidRes.ok) {
-        const data = await rapidRes.json();
-        if (data.data?.products?.length) {
-          products = data.data.products;
-          chosenName = name;
-          break; // Stop at first successful match
-        }
+    if (rapidRes.ok) {
+      const data = await rapidRes.json();
+      if (data.data?.products?.length) {
+        products = data.data.products;
       }
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ itemName: chosenName, products, visionLabels: rankedNames }),
+      body: JSON.stringify({ itemName, products, visionLabels: uniqueNames }),
     };
   } catch (err) {
     console.error("analyzeImage error:", err);
