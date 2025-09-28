@@ -36,8 +36,11 @@ exports.handler = async (event) => {
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
-        { type: "OBJECT_LOCALIZATION", maxResults: 5 },
         { type: "DOCUMENT_TEXT_DETECTION", maxResults: 5 },
+        { type: "PRODUCT_SEARCH", productSet: "projects/1001/locations/us-east1/productSets/1001", maxResults: 5, productCategories: ["general-v1"] },
+        { type: "LOGO_DETECTION", maxResults: 5 },
+        { type: "OBJECT_LOCALIZATION", maxResults: 5 },
+        
       ],
     });
 
