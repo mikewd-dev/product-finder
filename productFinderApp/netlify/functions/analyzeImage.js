@@ -1,4 +1,5 @@
 const vision = require("@google-cloud/vision");
+const sharp = require("sharp");
 
 // Decode Google credentials
 const decodedCredentials = Buffer.from(
@@ -21,16 +22,22 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: "No image provided" }) };
     }
 
-    const imageBuffer = Buffer.from(imageBase64, "base64");
+    const originalBuffer = Buffer.from(imageBase64, "base64");
+
+    // Resize image with sharp to recommended minimum for OCR / Vision
+    const resizedBuffer = await sharp(originalBuffer)
+      .resize({ width: 1024, height: 768, fit: "inside" }) // preserves aspect ratio
+      .jpeg({ quality: 90 }) // optional: compress to reduce payload
+      .toBuffer();
 
     // Call Vision API
     const [result] = await client.annotateImage({
-      image: { content: imageBuffer.toString("base64") },
+      image: { content: resizedBuffer.toString("base64") },
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
+        { type: "OBJECT_LOCALIZATION", maxResults: 5 },
         { type: "TEXT_DETECTION", maxResults: 5 },
-        { type: "PRODUCT_SEARCH", maxResults: 5 }
       ],
     });
 
@@ -38,28 +45,35 @@ exports.handler = async (event) => {
     const namesToTry = [];
 
     if (result.webDetection?.bestGuessLabels?.length) {
-      result.webDetection.bestGuessLabels.forEach(l => l.label && namesToTry.push(l.label.trim()));
+      result.webDetection.bestGuessLabels.forEach((l) =>
+        l.label && namesToTry.push(l.label.trim())
+      );
     }
 
     if (result.labelAnnotations?.length) {
-      result.labelAnnotations.forEach(l => l.description && namesToTry.push(l.description.trim()));
+      result.labelAnnotations.forEach((l) =>
+        l.description && namesToTry.push(l.description.trim())
+      );
     }
 
     if (result.textAnnotations?.length) {
-      result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
+      result.textAnnotations.forEach((t) =>
+        t.description && namesToTry.push(t.description.trim())
+      );
     }
 
     const uniqueNames = [...new Set(namesToTry)];
-
     console.log("Vision labels:", uniqueNames);
 
     const itemName = uniqueNames[0] || "Unknown item";
 
-    // RapidAPI
+    // Call RapidAPI
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
+    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(
+      itemName
+    )}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
     console.log("RapidAPI URL:", rapidUrl);
 
     const rapidRes = await fetch(rapidUrl, {
