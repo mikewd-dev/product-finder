@@ -27,9 +27,9 @@ exports.handler = async (event) => {
     const [result] = await client.annotateImage({
       image: { content: imageBuffer.toString("base64") },
       features: [
-        { type: "WEB_DETECTION", maxResults: 5 },
-        { type: "TEXT_DETECTION", maxResults: 5 },
-        { type: "LOGO_DETECTION", maxResults: 3 },
+        { type: "WEB_DETECTION", maxResults: 10 },
+        { type: "TEXT_DETECTION", maxResults: 10 },
+        { type: "LOGO_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
         { type: "OBJECT_LOCALIZATION", maxResults: 5 }
       ],
