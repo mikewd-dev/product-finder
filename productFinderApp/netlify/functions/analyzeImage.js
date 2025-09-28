@@ -26,7 +26,7 @@ exports.handler = async (event) => {
 
     // Resize image with sharp to recommended minimum for OCR / Vision
     const resizedBuffer = await sharp(originalBuffer)
-      .resize({ width: 1024, height: 768, fit: "inside" }) // preserves aspect ratio
+      .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true }) // preserves aspect ratio
       .jpeg({ quality: 90 }) // optional: compress to reduce payload
       .toBuffer();
 
@@ -37,7 +37,7 @@ exports.handler = async (event) => {
         { type: "WEB_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
         { type: "OBJECT_LOCALIZATION", maxResults: 5 },
-        { type: "TEXT_DETECTION", maxResults: 5 },
+        { type: "DOCUMENT_TEXT_DETECTION", maxResults: 5 },
       ],
     });
 
@@ -56,10 +56,16 @@ exports.handler = async (event) => {
       );
     }
 
-    if (result.textAnnotations?.length) {
-      result.textAnnotations.forEach((t) =>
-        t.description && namesToTry.push(t.description.trim())
+    if (result.logoAnnotations?.length) {
+      result.logoAnnotations.forEach((logo) =>
+        logo.description && namesToTry.push(logo.description.trim())
       );
+    }
+    
+
+    if (result.textAnnotations?.length) {
+      const mainText = result.textAnnotations[0].description.trim();
+      if (mainText) namesToTry.push(mainText);
     }
 
     const uniqueNames = [...new Set(namesToTry)];

@@ -5,7 +5,7 @@ export const modifyData = (products = []) => {
     description: product?.product_description,
     retailer: product?.store_name,
     rating: product?.store_rating,
-    price: product?.offer?.price ? product.offer.price.replace(/£/g, "") : undefined,
+    price: product?.price ? product.offer.price.replace(/£/g, "") : undefined,
     shipping: product?.shipping,
     link: product?.offer_page_url,
     images: Array.isArray(product?.product_photo)
@@ -46,15 +46,15 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
   try {
     setLoading(true);
 
-    // Convert HEIC or unsupported formats
+    // 🔹 Step 1: Convert HEIC or unsupported formats to JPEG
     let convertedImage = imageFile;
-    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
-      convertedImage = await heic2any({ blob: imageFile });
-      // heic2any may return an array
-      if (Array.isArray(convertedImage)) convertedImage = convertedImage[0];
+    if (!["image/png", "image/jpeg"].includes(imageFile.type)) {
+      let result = await heic2any({ blob: imageFile, toType: "image/jpeg" });
+      if (Array.isArray(result)) result = result[0];
+      convertedImage = new File([result], "converted.jpg", { type: "image/jpeg" });
     }
 
-    // Convert image to Base64
+    // 🔹 Step 2: Convert image to Base64
     const reader = new FileReader();
     const analyzeResponse = await new Promise((resolve, reject) => {
       reader.onload = async () => {
@@ -84,7 +84,7 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
       reader.readAsDataURL(convertedImage);
     });
 
-    // Extract item name from Vision API response
+    // 🔹 Step 3: Extract item name from Vision API response
     extractItemNameFromResponse(analyzeResponse, setProductName);
 
     if (!analyzeResponse.products || analyzeResponse.products.length === 0) {
@@ -92,7 +92,7 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
       return [];
     }
 
-    // Shape the product data for the frontend
+    // 🔹 Step 4: Shape the product data for the frontend
     return modifyData(analyzeResponse.products);
 
   } catch (err) {
