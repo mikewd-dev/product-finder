@@ -132,7 +132,7 @@ exports.handler = async (event) => {
 
     const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(
       itemName
-    )}&country=gb&language=en&page=1&limit=10&sort_by=BEST_MATCH&product_condition=ANY&return_filters=false`;
+    )}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
 
     const rapidRes = await fetch(rapidUrl, {
       headers: {
