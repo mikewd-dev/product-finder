@@ -7,7 +7,7 @@ export const modifyData = (products = []) => {
     rating: product?.store_rating,
     price: product?.price ? product.price.replace(/£/g, "") : undefined,
     shipping: product?.shipping,
-    link: product?.offer_page_url,
+    link: product?.product_offer_page_url,
     images: Array.isArray(product?.product_photo)
       ? product.product_photo
       : [product?.product_photo].filter(Boolean),
