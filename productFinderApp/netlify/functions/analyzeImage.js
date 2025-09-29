@@ -39,7 +39,6 @@ exports.handler = async (event) => {
 
     let focusedBuffer = originalBuffer;
     if (mainObject) {
-      // Convert normalized coords to pixels
       const vertices = mainObject.boundingPoly.normalizedVertices;
       const left = Math.floor(vertices[0].x * imageWidth);
       const top = Math.floor(vertices[0].y * imageHeight);
@@ -49,7 +48,6 @@ exports.handler = async (event) => {
       const width = right - left;
       const height = bottom - top;
 
-      // Crop to main object
       focusedBuffer = await sharp(originalBuffer)
         .extract({ left, top, width, height })
         .resize({ width: 1024, height: 1024, fit: "inside" })
@@ -67,6 +65,7 @@ exports.handler = async (event) => {
         { type: "TEXT_DETECTION", maxResults: 5 },
       ],
     });
+    console.log("Full Vision result:", JSON.stringify(fullResult, null, 2));
 
     // --- Step 3: Vision on focused object ---
     let focusedResult = null;
@@ -80,9 +79,10 @@ exports.handler = async (event) => {
           { type: "TEXT_DETECTION", maxResults: 5 },
         ],
       });
+      console.log("Focused Vision result:", JSON.stringify(focusedResult, null, 2));
     }
 
-    // --- Step 4: Merge results ---
+    // --- Step 4: Collect candidates ---
     function extractLabels(result, weight = 1) {
       const names = [];
       if (!result) return names;
@@ -111,7 +111,7 @@ exports.handler = async (event) => {
 
     const allCandidates = [
       ...extractLabels(fullResult, 1),
-      ...extractLabels(focusedResult, 2), // weight focused higher
+      ...extractLabels(focusedResult, 2),
     ];
 
     const ranked = Object.values(
@@ -149,9 +149,19 @@ exports.handler = async (event) => {
       }
     }
 
+    // --- Final return: include raw Vision outputs for debugging ---
     return {
       statusCode: 200,
-      body: JSON.stringify({ itemName, products, ranked }),
+      body: JSON.stringify({
+        itemName,
+        ranked,
+        products,
+        rawVision: {
+          full: fullResult,
+          focused: focusedResult,
+          objects,
+        },
+      }),
     };
   } catch (err) {
     console.error("analyzeImage error:", err);
