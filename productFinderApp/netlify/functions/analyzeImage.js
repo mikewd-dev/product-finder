@@ -44,7 +44,6 @@ exports.handler = async (event) => {
       const top = Math.floor(vertices[0].y * imageHeight);
       const right = Math.floor(vertices[2].x * imageWidth);
       const bottom = Math.floor(vertices[2].y * imageHeight);
-
       const width = right - left;
       const height = bottom - top;
 
@@ -65,7 +64,6 @@ exports.handler = async (event) => {
         { type: "TEXT_DETECTION", maxResults: 5 },
       ],
     });
-    console.log("Full Vision result:", JSON.stringify(fullResult, null, 2));
 
     // --- Step 3: Vision on focused object ---
     let focusedResult = null;
@@ -79,7 +77,6 @@ exports.handler = async (event) => {
           { type: "TEXT_DETECTION", maxResults: 5 },
         ],
       });
-      console.log("Focused Vision result:", JSON.stringify(focusedResult, null, 2));
     }
 
     // --- Step 4: Collect candidates ---
@@ -92,23 +89,28 @@ exports.handler = async (event) => {
           l.label && names.push({ name: l.label.trim(), score: 80 * weight })
         );
       }
+
       if (result.labelAnnotations?.length) {
         result.labelAnnotations.forEach((l) =>
           names.push({ name: l.description.trim(), score: Math.round(l.score * 100 * weight) })
         );
       }
+
       if (result.logoAnnotations?.length) {
         result.logoAnnotations.forEach((l) =>
           names.push({ name: l.description.trim(), score: Math.round(l.score * 100 * weight) })
         );
       }
+
       if (result.textAnnotations?.length) {
         const mainText = result.textAnnotations[0].description.trim();
         if (mainText) names.push({ name: mainText, score: 70 * weight });
       }
+
       return names;
     }
 
+    // Weight focused object labels more heavily
     const allCandidates = [
       ...extractLabels(fullResult, 1),
       ...extractLabels(focusedResult, 2),
