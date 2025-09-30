@@ -18,7 +18,13 @@ export const modifyData = (products = []) => {
 export const extractItemNameFromResponse = (visionApiResponse, setProductName) => {
   const response = visionApiResponse;
 
-  // Try webDetection best guess first
+  // Use ranked candidates if available
+  if (response?.ranked?.length) {
+    setProductName(response.ranked[0].name);
+    return response.ranked[0].name;
+  }
+
+  // Fallback to webDetection best guess
   const webGuess = response?.responses?.[0]?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
   if (webGuess) {
     setProductName(webGuess);
@@ -42,19 +48,11 @@ const NETLIFY_FUNCTIONS_URL =
   import.meta.env.VITE_NETLIFY_FUNCTIONS_URL || "/.netlify/functions";
 
 // 🔹 Main image upload handler
-export const handleImage = async (imageFile, setProductName, setError, setLoading) => {
+export const handleImage = async (imageFile, setProductName, setError, setLoading, setCandidates) => {
   try {
     setLoading(true);
 
-    // 🔹 Step 1: Convert HEIC or unsupported formats to JPEG
-    let convertedImage = imageFile;
-    if (!["image/png", "image/jpeg"].includes(imageFile.type)) {
-      let result = await heic2any({ blob: imageFile, toType: "image/jpeg" });
-      if (Array.isArray(result)) result = result[0];
-      convertedImage = new File([result], "converted.jpg", { type: "image/jpeg" });
-    }
-
-    // 🔹 Step 2: Convert image to Base64
+    // 🔹 Step 1: Convert image to Base64
     const reader = new FileReader();
     const analyzeResponse = await new Promise((resolve, reject) => {
       reader.onload = async () => {
@@ -81,18 +79,23 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
         }
       };
       reader.onerror = () => reject(new Error("Failed to read image file"));
-      reader.readAsDataURL(convertedImage);
+      reader.readAsDataURL(imageFile); // ← just send the file, no conversion
     });
 
-    // 🔹 Step 3: Extract item name from Vision API response
+    // 🔹 Step 2: Extract item name from Vision API response
     extractItemNameFromResponse(analyzeResponse, setProductName);
 
+    // 🔹 Step 3: Store ranked candidates if available
+    if (setCandidates && analyzeResponse?.ranked?.length) {
+      setCandidates(analyzeResponse.ranked);
+    }
+
+    // 🔹 Step 4: Shape the product data for the frontend
     if (!analyzeResponse.products || analyzeResponse.products.length === 0) {
       setError("No products found for this item.");
       return [];
     }
 
-    // 🔹 Step 4: Shape the product data for the frontend
     return modifyData(analyzeResponse.products);
 
   } catch (err) {
