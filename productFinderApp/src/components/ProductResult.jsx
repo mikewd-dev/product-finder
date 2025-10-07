@@ -64,19 +64,27 @@ const ProductResult = ({ inputImageFile = null }) => {
       </div>
 
       <div ref={drop}>
-        {loading && <p>Loading...</p>}
-        {error && <p style={{ color: "red" }}>Error: {error}</p>}
-
-        {products.length > 0 ? (
+        {imageFile && (
           <>
-            <ProductCarousel products={products} />
-            <ProductGrid products={products} />
-          </>
-        ) : (
-          !loading && <p>No products found</p>
-        )}
+            {loading && <p>Loading...</p>}
+            {error && <p style={{ color: "red" }}>Error: {error}</p>}
 
-        <AnalysisResults analysisResults={analysisResults} />
+            {!loading && !error && (
+              <>
+                {products.length > 0 ? (
+                  <>
+                    <ProductCarousel products={products} />
+                    <ProductGrid products={products} />
+                  </>
+                ) : (
+                  <p>No products found</p>
+                )}
+
+                <AnalysisResults analysisResults={analysisResults} />
+              </>
+            )}
+          </>
+        )}
       </div>
     </>
   );
