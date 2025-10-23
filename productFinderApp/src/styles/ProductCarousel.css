@@ -58,11 +58,11 @@
 
 
 @media screen and (max-width: 600px){
-  carousel-container {
+  .carousel-container {
     background-color: #657ed4;
-    margin: 50px; 
+    margin: 1px; 
     border: 10px solid var(--color-accent-dark);
-    padding: 10px;
+    padding: 2px;
     box-sizing: border-box;
     border-radius: 40px;
     display: flex;
@@ -71,4 +71,4 @@
     flex-direction: column;
     width: 100vw;
   }
-  }
+}
