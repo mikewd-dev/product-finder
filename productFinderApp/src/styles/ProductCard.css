@@ -323,8 +323,10 @@ border-radius: 40px;
 }
 
 @media screen and (max-width: 600px){
-.product-details{
-  
+.product-image{
+  justify-self: left;
 }
-    
+.product-card {
+  width: 100%;
+}   
 }
