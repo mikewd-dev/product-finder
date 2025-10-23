@@ -71,4 +71,19 @@
     flex-direction: column;
     width: 100vw;
   }
+
+  .carousel-container .slick-slide img {
+      margin-top: 17px;
+      height: auto;
+      object-fit: contain;
+      width: 100%;
+      object-position: left;
+      border-radius: var(--card-border-radius);
+  }
+  .selected-products-section {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+  }
 }
