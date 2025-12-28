@@ -26,7 +26,7 @@ exports.handler = async (event) => {
     const imageWidth = metadata.width;
     const imageHeight = metadata.height;
 
-    // --- Step 1: Detect objects on full image ---
+   
     const [objectResult] = await client.annotateImage({
       image: { content: originalBuffer.toString("base64") },
       features: [{ type: "OBJECT_LOCALIZATION", maxResults: 5 }],
@@ -53,7 +53,6 @@ exports.handler = async (event) => {
         .toBuffer();
     }
 
-    // --- Step 2: Vision on full image ---
     const [fullResult] = await client.annotateImage({
       image: { content: originalBuffer.toString("base64") },
     const imageBuffer = Buffer.from(imageBase64, "base64");
@@ -122,7 +121,6 @@ exports.handler = async (event) => {
       }
     }
 
-    // --- Final return: include raw Vision outputs for debugging ---
     return {
       statusCode: 200,
       body: JSON.stringify({
