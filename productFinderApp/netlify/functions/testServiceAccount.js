@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 
 export async function handler(event, context) {
   try {
-    // Parse the JSON key from env variable
+   
     const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
 
     const auth = new google.auth.GoogleAuth({
@@ -13,7 +13,6 @@ export async function handler(event, context) {
     const client = await auth.getClient();
     const drive = google.drive({ version: 'v3', auth: client });
 
-    // Test: list first 5 files
     const res = await drive.files.list({ pageSize: 5 });
 
     return {

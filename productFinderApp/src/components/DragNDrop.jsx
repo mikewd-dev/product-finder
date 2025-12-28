@@ -7,7 +7,6 @@ const DragNDrop = ({ onDrop }) => {
     accept: [NativeTypes.FILE],
     drop: (item) => {
       if (item.files && item.files.length > 0) {
-        // Handle dropped files
         onDrop(item.files[0]);
       }
     },

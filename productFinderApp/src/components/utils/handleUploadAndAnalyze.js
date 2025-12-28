@@ -10,7 +10,6 @@ export const handleUpload = async (
   setError(null);
 
   try {
-    // Convert image to Base64
     const base64Data = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(imageFile);
@@ -42,7 +41,7 @@ export const handleUpload = async (
 
     console.log("Server response:", data);
 
-    // ✅ Use the returned fields directly
+   
     setProductName(data.itemName || "Unknown item");
     setProducts(data.products || []);
     setAnalysisResults(data.visionLabels || []);

@@ -1,7 +1,6 @@
 const vision = require("@google-cloud/vision");
-const sharp = require("sharp");
 
-// Decode Google credentials
+
 const decodedCredentials = Buffer.from(
   process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
   "base64"
@@ -57,6 +56,11 @@ exports.handler = async (event) => {
     // --- Step 2: Vision on full image ---
     const [fullResult] = await client.annotateImage({
       image: { content: originalBuffer.toString("base64") },
+    const imageBuffer = Buffer.from(imageBase64, "base64");
+
+  
+    const [result] = await client.annotateImage({
+      image: { content: imageBuffer.toString("base64") },
       features: [
         { type: "WEB_DETECTION", maxResults: 5 },
         { type: "LABEL_DETECTION", maxResults: 5 },
@@ -65,24 +69,8 @@ exports.handler = async (event) => {
       ],
     });
 
-    // --- Step 3: Vision on focused object ---
-    let focusedResult = null;
-    if (mainObject) {
-      [focusedResult] = await client.annotateImage({
-        image: { content: focusedBuffer.toString("base64") },
-        features: [
-          { type: "WEB_DETECTION", maxResults: 5 },
-          { type: "LABEL_DETECTION", maxResults: 5 },
-          { type: "LOGO_DETECTION", maxResults: 5 },
-          { type: "TEXT_DETECTION", maxResults: 5 },
-        ],
-      });
-    }
-
-    // --- Step 4: Collect candidates ---
-    function extractLabels(result, weight = 1) {
-      const names = [];
-      if (!result) return names;
+   
+    const namesToTry = [];
 
       if (result.webDetection?.bestGuessLabels?.length) {
         result.webDetection.bestGuessLabels.forEach((l) =>
@@ -102,46 +90,29 @@ exports.handler = async (event) => {
         );
       }
 
-      if (result.textAnnotations?.length) {
-        const mainText = result.textAnnotations[0].description.trim();
-        if (mainText) names.push({ name: mainText, score: 70 * weight });
-      }
-
-      return names;
+    if (result.textAnnotations?.length) {
+      result.textAnnotations.forEach(t => t.description && namesToTry.push(t.description.trim()));
     }
 
-    // Weight focused object labels more heavily
-    const allCandidates = [
-      ...extractLabels(fullResult, 1),
-      ...extractLabels(focusedResult, 2),
-    ];
+    const uniqueNames = [...new Set(namesToTry)];
 
-    const ranked = Object.values(
-      allCandidates.reduce((acc, cur) => {
-        if (!acc[cur.name]) acc[cur.name] = { name: cur.name, score: 0 };
-        acc[cur.name].score += cur.score;
-        return acc;
-      }, {})
-    ).sort((a, b) => b.score - a.score);
+  
+    const itemName = uniqueNames[0] || "Unknown item";
 
-    console.log("Ranked candidates:", ranked);
 
-    const itemName = ranked.length ? ranked[0].name : "Unknown item";
-
-    // --- Step 5: RapidAPI lookup ---
     const rapidHost = process.env.RAPIDAPI_HOST;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    const rapidUrl = `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(
-      itemName
-    )}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`;
-
-    const rapidRes = await fetch(rapidUrl, {
-      headers: {
-        "X-RapidAPI-Key": rapidKey,
-        "X-RapidAPI-Host": rapidHost,
-      },
-    });
+    
+    const rapidRes = await fetch(
+      `https://${rapidHost}/search-light-v2?q=${encodeURIComponent(itemName)}&country=gb&language=en&page=1&limit=10&sort_by=LOWEST_PRICE&product_condition=ANY&return_filters=false`,
+      {
+        headers: {
+          "X-RapidAPI-Key": rapidKey,
+          "X-RapidAPI-Host": rapidHost,
+        },
+      }
+    );
 
     let products = [];
     if (rapidRes.ok) {

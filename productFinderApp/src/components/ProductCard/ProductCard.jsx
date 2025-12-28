@@ -13,7 +13,7 @@ import { HiOutlineShoppingBag } from "react-icons/hi";
 function extractShippingPrice(shippingInfo) {
   
   if (typeof shippingInfo === 'string') {
-    // Extract the numerical part using regex
+
     const match = shippingInfo.match(/£(\d+(\.\d{1,2})?)/);
 
     if (match) {
@@ -21,8 +21,6 @@ function extractShippingPrice(shippingInfo) {
     }
   }
 
-  //there is an edge case bug here, as this line triggers the Free shipping text to be rendered, which may be false as the api may just not have the info
-  //however the api doesn't return 0 when it does detect that there is free shipping, so not my problem nor my fault
   return 0; 
 }
 
@@ -33,15 +31,15 @@ const convertRatingToStars = (rating) => {
    const remainder = rating - intRating;
    const stars = [];
    
-   // Adds full stars
+  
    for (let i = 0; i < intRating; i++) {
      stars.push(<IoIosStar key={i} />);
    }
-   // Adds half star if remainder is greater than 0.2. 0.201 value is used as real values are weird in JS
+  
    if (remainder > 0.201) {
      stars.push(<IoIosStarHalf key="half" />);
    }
-   // Adds empty stars to reach a total of 5 stars
+  
    while (stars.length < 5) {
      stars.push(<IoIosStarOutline key={stars.length} />);
    }
@@ -53,7 +51,7 @@ const convertRatingToStars = (rating) => {
 };
 
 function truncateDescription(desc) {
-  // Truncate the description to 200 characters
+
   if(desc){ //In case desc is null
     return desc.length > 200 ? desc.substring(0, 200) : desc;
   }
@@ -72,7 +70,7 @@ function ProductCard({ images, name, price, isBest, description, link, rating, r
   const truncatedDescription = isDescriptionExpanded ? description : truncateDescription(description);
 
 
-  // console.log(`${name}, ${shipping}, ${shippingPrice}`)
+ 
   return (
     <div className={cardClassName}>
        {Array.isArray(images) && images.length > 0 ? (

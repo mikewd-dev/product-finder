@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import ProductCard from './ProductCard/ProductCard';
 import '../styles/ProductGrid.css'
 const ProductGrid = ({ products }) => {
-  //Controls 
+ 
   const rowsPerLoad = 2;
 
   const [loadedRows, setLoadedRows] = useState(rowsPerLoad);
   const [itemsPerRow, setItemsPerRow] = useState(calculateItemsPerRow());
   
   function calculateItemsPerRow() {
-    // Adjust the breakpoint value as needed
     const breakpoint = 2000;
     return window.innerWidth < breakpoint ? 1 : 3;
   }

@@ -1,4 +1,4 @@
-// ImageCarousel.js
+
 import React, { useState, useEffect } from 'react';
 import Slider from 'react-slick';
 import Modal from 'react-responsive-modal';
@@ -42,7 +42,6 @@ function ImageCarousel({ images }) {
         maxHeight = heightToFitWithinMaxHeight;
       });
   
-      // Set CSS variables dynamically
       document.documentElement.style.setProperty('--modal-max-width', `${maxWidth}px`);
       document.documentElement.style.setProperty('--modal-max-height', `${maxHeight}px`);
     };

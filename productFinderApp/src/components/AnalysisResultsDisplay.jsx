@@ -1,7 +1,7 @@
 function AnalysisResults({ analysisResults }) {
   if (!analysisResults) return null;
 
-  // Attempt to get images from either expected Vision API fields or fallback to product data
+
   const pagesWithMatchingImages = analysisResults.pagesWithMatchingImages || [];
   const visuallySimilarImages =
     analysisResults.visuallySimilarImages ||

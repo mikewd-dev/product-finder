@@ -17,15 +17,6 @@ const ImageAnalysis = () => {
 
 const NETLIFY_FUNCTIONS_URL = import.meta.env.VITE_NETLIFY_FUNCTIONS_URL;
 
-// useEffect(() => {
-//   fetch(`${NETLIFY_FUNCTIONS_URL}/testFunction`)
-//     .then(res => res.json())
-//     .then(data => console.log("Test function response:", data))
-//     .catch(err => console.error("Test function error:", err));
-// }, []);
-
-
-
   const handleImageChange = (e) => {
     if (e.target.files[0]) {
       setSelectedImage(e.target.files[0]);
@@ -47,7 +38,6 @@ const NETLIFY_FUNCTIONS_URL = import.meta.env.VITE_NETLIFY_FUNCTIONS_URL;
 
       setProductData(products);
 
-      // Also set analysisResults from the same data
       console.log("Products returned:", products);
       if (products.length > 0) {
         const firstProduct = products[0];

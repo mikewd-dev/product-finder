@@ -1,4 +1,4 @@
-// netlify/functions/test-creds.js
+
 exports.handler = async function () {
   try {
     const encoded = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;

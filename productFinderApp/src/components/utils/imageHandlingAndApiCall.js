@@ -1,3 +1,4 @@
+
 export const modifyData = (products = []) => {
   if (!Array.isArray(products)) return [];
   return products.map((product) => ({
@@ -14,45 +15,45 @@ export const modifyData = (products = []) => {
   }));
 };
 
-// 🔹 Extract the best item name from Vision API response
+
 export const extractItemNameFromResponse = (visionApiResponse, setProductName) => {
   const response = visionApiResponse;
 
-  // Use ranked candidates if available
-  if (response?.ranked?.length) {
-    setProductName(response.ranked[0].name);
-    return response.ranked[0].name;
-  }
 
-  // Fallback to webDetection best guess
   const webGuess = response?.responses?.[0]?.webDetection?.bestGuessLabels?.[0]?.label?.trim();
   if (webGuess) {
     setProductName(webGuess);
     return webGuess;
   }
 
-  // Fallback to first labelAnnotation
+ 
   const labelAnnotation = response?.responses?.[0]?.labelAnnotations?.[0]?.description?.trim();
   if (labelAnnotation) {
     setProductName(labelAnnotation);
     return labelAnnotation;
   }
 
-  // Final fallback
+ 
   setProductName("Unknown item");
   return "Unknown item";
 };
 
-// 🔹 Dev + prod safe Netlify functions URL
+
 const NETLIFY_FUNCTIONS_URL =
   import.meta.env.VITE_NETLIFY_FUNCTIONS_URL || "/.netlify/functions";
 
-// 🔹 Main image upload handler
-export const handleImage = async (imageFile, setProductName, setError, setLoading, setCandidates) => {
+
+export const handleImage = async (imageFile, setProductName, setError, setLoading) => {
   try {
     setLoading(true);
 
-    // 🔹 Step 1: Convert image to Base64
+  
+    let convertedImage = imageFile;
+    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(imageFile.type)) {
+      convertedImage = await heic2any({ blob: imageFile });
+      if (Array.isArray(convertedImage)) convertedImage = convertedImage[0];
+    }
+
     const reader = new FileReader();
     const analyzeResponse = await new Promise((resolve, reject) => {
       reader.onload = async () => {
@@ -60,7 +61,6 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
           if (!reader.result) return reject(new Error("Failed to read image"));
           const imageBase64 = reader.result.split(",")[1];
 
-          // Call Netlify function for Vision + RapidAPI
           const response = await fetch(`${NETLIFY_FUNCTIONS_URL}/analyzeImage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -82,7 +82,6 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
       reader.readAsDataURL(imageFile); // ← just send the file, no conversion
     });
 
-    // 🔹 Step 2: Extract item name from Vision API response
     extractItemNameFromResponse(analyzeResponse, setProductName);
 
     // 🔹 Step 3: Store ranked candidates if available
@@ -96,7 +95,8 @@ export const handleImage = async (imageFile, setProductName, setError, setLoadin
       return [];
     }
 
-    return modifyData(analyzeResponse.products);
+   
+    return modifyData(analyzeResponse.data);
 
   } catch (err) {
     console.error("Error handling image upload:", err);
